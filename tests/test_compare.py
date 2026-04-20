@@ -1,5 +1,6 @@
 """Smoke tests for the compare function."""
 
+import importlib
 import json
 
 import pytest
@@ -17,6 +18,8 @@ from healthcare_crossroads.events import (
     Retirement,
     Unemployment,
 )
+
+compare_module = importlib.import_module("healthcare_crossroads.compare")
 
 
 @pytest.fixture
@@ -110,6 +113,50 @@ class TestCompareMarriage:
         before_people = len(result.before_situation["people"])
         after_people = len(result.after_situation["people"])
         assert after_people == before_people + 1
+
+    def test_marriage_uses_counterfactual_spouse_coverage(
+        self, single_adult_household, monkeypatch
+    ):
+        """Marriage should compare the spouse's pre-marriage coverage to the after state."""
+
+        class FakeSimulation:
+            def __init__(self, num_people: int, first_income: float):
+                self.num_people = num_people
+                self.first_income = first_income
+
+            def calculate(self, variable: str, year: int):
+                if variable in ("medicaid", "chip"):
+                    return [0.0] * self.num_people
+                if variable == "premium_tax_credit":
+                    if self.first_income == 15000:
+                        return [2000.0]
+                    if self.num_people == 2:
+                        return [2500.0]
+                    return [0.0]
+                raise KeyError(variable)
+
+        def fake_run_simulation(situation: dict, year: int):
+            people = situation["people"]
+            first_person = people["person_0"]
+            first_income = first_person["employment_income"][year]
+            return {}, FakeSimulation(len(people), first_income)
+
+        monkeypatch.setattr(compare_module, "_run_simulation", fake_run_simulation)
+
+        result = compare_module.compare(
+            single_adult_household,
+            Marriage(spouse_age=28, spouse_employment_income=15000),
+        )
+
+        before_coverage = {
+            person.label: person.coverage_type for person in result.healthcare_before.people
+        }
+        after_coverage = {
+            person.label: person.coverage_type for person in result.healthcare_after.people
+        }
+
+        assert before_coverage["Spouse"] == "Marketplace"
+        assert after_coverage["Spouse"] == "Marketplace"
 
 
 class TestCompareDivorce:

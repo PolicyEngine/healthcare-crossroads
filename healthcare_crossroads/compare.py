@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
 from policyengine_us import Simulation
 
 from .events.base import LifeEvent
-from .household import Household
+from .events.marriage import Marriage
+from .household import Household, Person
 
 
 # All variables to track in comparisons - comprehensive list
@@ -473,6 +475,79 @@ def _extract_healthcare_coverage(
     return HealthcareCoverage(people=people, has_ptc=has_ptc)
 
 
+def _extract_counterfactual_before_coverage(
+    household: Household,
+    after_household: Household,
+    event: LifeEvent,
+) -> HealthcareCoverage | None:
+    """Estimate pre-event coverage for people joining the household via marriage."""
+    if not isinstance(event, Marriage):
+        return None
+
+    spouse_household = Household(
+        state=household.state,
+        members=[
+            Person(
+                age=event.spouse_age,
+                employment_income=event.spouse_employment_income,
+                self_employment_income=event.spouse_self_employment_income,
+                is_tax_unit_head=True,
+                has_esi=event.spouse_has_esi,
+            ),
+            *[deepcopy(child) for child in event.spouse_children],
+        ],
+        year=household.year,
+        county=household.county,
+        zip_code=household.zip_code,
+    )
+    _, spouse_sim = _run_simulation(
+        spouse_household.to_situation(), spouse_household.year
+    )
+    spouse_coverage = _extract_healthcare_coverage(
+        spouse_sim,
+        spouse_household,
+        spouse_household.year,
+    )
+
+    starting_index = len(household.members)
+    remapped_people = []
+    for offset, person in enumerate(spouse_coverage.people):
+        after_index = starting_index + offset
+        remapped_people.append(
+            PersonHealthcare(
+                person_index=after_index,
+                label=_get_person_label(after_index, after_household),
+                medicaid=person.medicaid,
+                chip=person.chip,
+                marketplace=person.marketplace,
+                esi=person.esi,
+            )
+        )
+
+    return HealthcareCoverage(
+        people=remapped_people,
+        has_ptc=spouse_coverage.has_ptc,
+    )
+
+
+def _merge_healthcare_coverage(
+    primary: HealthcareCoverage,
+    extra: HealthcareCoverage | None,
+) -> HealthcareCoverage:
+    """Merge in extra per-person coverage without overwriting actual household members."""
+    if extra is None or not extra.people:
+        return primary
+
+    merged_people = {person.label: person for person in primary.people}
+    for person in extra.people:
+        merged_people.setdefault(person.label, person)
+
+    return HealthcareCoverage(
+        people=sorted(merged_people.values(), key=lambda person: person.person_index),
+        has_ptc=primary.has_ptc or extra.has_ptc,
+    )
+
+
 def compare(
     household: Household,
     event: LifeEvent,
@@ -510,6 +585,10 @@ def compare(
     # Extract healthcare coverage
     healthcare_before = _extract_healthcare_coverage(before_sim, household, household.year)
     healthcare_after = _extract_healthcare_coverage(after_sim, after_household, after_household.year)
+    healthcare_before = _merge_healthcare_coverage(
+        healthcare_before,
+        _extract_counterfactual_before_coverage(household, after_household, event),
+    )
 
     # Build changes dictionary
     vars_to_compare = variables or OUTPUT_VARIABLES
