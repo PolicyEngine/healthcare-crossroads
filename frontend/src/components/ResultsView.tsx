@@ -33,6 +33,40 @@ function getCoverageLabel(type: string | null): string {
   }
 }
 
+function isChildLabel(label: string): boolean {
+  return label.startsWith('Child ');
+}
+
+function formatPersonLabel(
+  label: string,
+  options?: {
+    isNew?: boolean;
+    isNewBabyScenario?: boolean;
+  }
+): string {
+  if (options?.isNew && options.isNewBabyScenario && isChildLabel(label)) {
+    return `${label} (new baby)`;
+  }
+
+  if (options?.isNew) {
+    return `${label} (new)`;
+  }
+
+  return label;
+}
+
+function formatBeforeCoverageLabel(
+  label: string,
+  coverageType: string | null,
+  isNewBabyScenario: boolean
+): string {
+  if (coverageType === null && isNewBabyScenario && isChildLabel(label)) {
+    return 'No previous coverage (new baby)';
+  }
+
+  return getCoverageLabel(coverageType);
+}
+
 function getCoverageIcon(type: string | null): string {
   switch (type) {
     case 'ESI':
@@ -129,9 +163,11 @@ function CountCard({
 function CoverageOutcomeCard({
   before,
   after,
+  isNewBabyScenario,
 }: {
   before?: HealthcareCoverage;
   after?: HealthcareCoverage;
+  isNewBabyScenario: boolean;
 }) {
   if (!before && !after) return null;
 
@@ -169,8 +205,7 @@ function CoverageOutcomeCard({
                       <span key={person}>
                         {index > 0 && ', '}
                         <span className={isNew ? 'text-green-600 font-medium' : ''}>
-                          {person}
-                          {isNew ? ' (new)' : ''}
+                          {formatPersonLabel(person, { isNew, isNewBabyScenario })}
                         </span>
                       </span>
                     );
@@ -188,9 +223,11 @@ function CoverageOutcomeCard({
 function CoverageChangesCard({
   before,
   after,
+  isNewBabyScenario,
 }: {
   before?: HealthcareCoverage;
   after?: HealthcareCoverage;
+  isNewBabyScenario: boolean;
 }) {
   const changes = getCoverageChanges(before, after);
 
@@ -202,9 +239,14 @@ function CoverageChangesCard({
       <div className="space-y-2">
         {changes.map((change) => (
           <div key={change.label} className="flex items-center justify-between gap-4 py-2 px-3 rounded-lg bg-[#F9FAFB]">
-            <span className="text-sm font-medium text-gray-800">{change.label}</span>
+            <span className="text-sm font-medium text-gray-800">
+              {formatPersonLabel(change.label, {
+                isNew: change.before === null && change.after !== null,
+                isNewBabyScenario,
+              })}
+            </span>
             <span className="text-sm text-gray-600 text-right">
-              {getCoverageLabel(change.before)}
+              {formatBeforeCoverageLabel(change.label, change.before, isNewBabyScenario)}
               <span className="mx-2 text-gray-300">→</span>
               <span className="font-medium text-gray-900">{getCoverageLabel(change.after)}</span>
             </span>
@@ -278,6 +320,7 @@ export default function ResultsView({ result, onReset }: ResultsViewProps) {
   const metrics = result.before.metrics || [];
   const premiumTaxCredit = metrics.find((metric) => metric.name === 'premium_tax_credit');
   const coverageChanges = getCoverageChanges(result.healthcareBefore, result.healthcareAfter);
+  const isNewBabyScenario = result.event?.name === 'New Child';
 
   return (
     <div className="space-y-6">
@@ -317,11 +360,13 @@ export default function ResultsView({ result, onReset }: ResultsViewProps) {
       <CoverageOutcomeCard
         before={result.healthcareBefore}
         after={result.healthcareAfter}
+        isNewBabyScenario={isNewBabyScenario}
       />
 
       <CoverageChangesCard
         before={result.healthcareBefore}
         after={result.healthcareAfter}
+        isNewBabyScenario={isNewBabyScenario}
       />
 
       <SupportChangesCard metrics={metrics} />

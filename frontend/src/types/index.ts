@@ -68,6 +68,10 @@ export interface SimulationResult {
   };
   healthcareBefore?: HealthcareCoverage;
   healthcareAfter?: HealthcareCoverage;
+  event?: {
+    name: string;
+    description: string;
+  };
 }
 
 export const LIFE_EVENTS: LifeEvent[] = [
