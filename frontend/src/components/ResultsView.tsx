@@ -1,5 +1,6 @@
 'use client';
 
+import { CoverageIcon } from '@/components/ScenarioIcons';
 import { BenefitMetric, HealthcareCoverage, SimulationResult } from '@/types';
 
 interface ResultsViewProps {
@@ -65,21 +66,6 @@ function formatBeforeCoverageLabel(
   }
 
   return getCoverageLabel(coverageType);
-}
-
-function getCoverageIcon(type: string | null): string {
-  switch (type) {
-    case 'ESI':
-      return '💼';
-    case 'Medicaid':
-      return '🏥';
-    case 'CHIP':
-      return '👶';
-    case 'Marketplace':
-      return '🛒';
-    default:
-      return '○';
-  }
 }
 
 function getCoverageForPerson(coverage: HealthcareCoverage | undefined, label: string): string | null {
@@ -195,7 +181,9 @@ function CoverageOutcomeCard({
 
           return (
             <div key={type} className="flex items-center gap-3 py-2 px-3 rounded-lg bg-gray-50">
-              <span className="text-base">{getCoverageIcon(type)}</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[#476072] shadow-sm ring-1 ring-[#D9E4EC]">
+                <CoverageIcon type={type} className="h-[18px] w-[18px]" />
+              </div>
               <div className="min-w-0">
                 <div className="text-sm font-medium text-gray-700">{getCoverageLabel(type)}</div>
                 <div className="text-sm text-gray-600">

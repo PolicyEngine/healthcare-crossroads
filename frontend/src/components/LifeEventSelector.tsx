@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { EventIcon } from '@/components/ScenarioIcons';
 import { LifeEvent, LifeEventType, LIFE_EVENTS, US_STATES, Household } from '@/types';
 
 interface LifeEventSelectorProps {
@@ -351,15 +352,15 @@ export default function LifeEventSelector({
                 } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <div className="flex items-center gap-4">
-                  <span
-                    className={`text-2xl w-10 h-10 flex items-center justify-center rounded-lg ${
-                      isSelected ? 'bg-[#B2F5EA]' : 'bg-[#F2F4F7]'
+                  <div
+                    className={`w-10 h-10 flex items-center justify-center rounded-lg ${
+                      isSelected
+                        ? 'bg-[#B2F5EA] text-[#285E61]'
+                        : 'bg-[#F2F4F7] text-[#64748B]'
                     }`}
-                    role="img"
-                    aria-label={event.label}
                   >
-                    {event.icon}
-                  </span>
+                    <EventIcon name={event.icon} className="h-5 w-5" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900">{event.label}</h3>
                     <p className="text-sm text-gray-500 mt-0.5">{event.description}</p>
