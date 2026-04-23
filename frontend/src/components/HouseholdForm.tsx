@@ -60,7 +60,7 @@ export default function HouseholdForm({
 
   // Handle number input - allow empty during typing
   const handleNumberChange = (
-    field: 'income' | 'spouseIncome' | 'age' | 'spouseAge',
+    field: 'age' | 'spouseAge',
     value: string,
   ) => {
     setEditingValue(value);
@@ -77,7 +77,7 @@ export default function HouseholdForm({
 
   // Validate and clamp on blur
   const handleNumberBlur = (
-    field: 'income' | 'spouseIncome' | 'age' | 'spouseAge',
+    field: 'age' | 'spouseAge',
     min: number,
     max?: number
   ) => {
@@ -92,12 +92,30 @@ export default function HouseholdForm({
     setEditingValue('');
   };
 
-  // Get display value for income fields (with commas when not editing)
-  const getIncomeDisplayValue = (field: 'income' | 'spouseIncome', value: number): string => {
-    if (editingField === field) {
-      return editingValue;
+  // Income fields: display/accept monthly, store annual
+  const handleIncomeChange = (field: 'income' | 'spouseIncome', value: string) => {
+    setEditingValue(value);
+    const monthly = parseInt(value.replace(/,/g, ''));
+    if (!isNaN(monthly)) {
+      updateField(field, monthly * 12);
     }
-    return formatWithCommas(value);
+  };
+
+  const handleIncomeFocus = (field: 'income' | 'spouseIncome', annualValue: number) => {
+    setEditingField(field);
+    setEditingValue(String(Math.round(annualValue / 12)));
+  };
+
+  const handleIncomeBlur = (field: 'income' | 'spouseIncome') => {
+    const monthly = parseFromCommas(editingValue);
+    updateField(field, isNaN(monthly) || editingValue === '' ? 0 : monthly * 12);
+    setEditingField(null);
+    setEditingValue('');
+  };
+
+  const getIncomeDisplayValue = (field: 'income' | 'spouseIncome', annualValue: number): string => {
+    if (editingField === field) return editingValue;
+    return formatWithCommas(Math.round(annualValue / 12));
   };
 
   return (
@@ -217,7 +235,7 @@ export default function HouseholdForm({
 
           <div>
             <label htmlFor="income" className="label">
-              Annual Earned Income
+              Monthly Earned Income
             </label>
             <div className={`currency-input ${disabled ? 'disabled' : ''}`}>
               <span className="currency-prefix">$</span>
@@ -226,9 +244,9 @@ export default function HouseholdForm({
                 type="text"
                 inputMode="numeric"
                 value={getIncomeDisplayValue('income', household.income)}
-                onChange={(e) => handleNumberChange('income', e.target.value)}
-                onFocus={() => handleNumberFocus('income', household.income)}
-                onBlur={() => handleNumberBlur('income', 0)}
+                onChange={(e) => handleIncomeChange('income', e.target.value)}
+                onFocus={() => handleIncomeFocus('income', household.income)}
+                onBlur={() => handleIncomeBlur('income')}
                 disabled={disabled}
                 className="currency-field"
               />
@@ -280,7 +298,7 @@ export default function HouseholdForm({
 
                 <div>
                   <label htmlFor="spouseIncome" className="label">
-                    Partner&apos;s Annual Earned Income
+                    Partner&apos;s Monthly Earned Income
                   </label>
                   <div className={`currency-input ${disabled ? 'disabled' : ''}`}>
                     <span className="currency-prefix">$</span>
@@ -289,9 +307,9 @@ export default function HouseholdForm({
                       type="text"
                       inputMode="numeric"
                       value={getIncomeDisplayValue('spouseIncome', household.spouseIncome ?? 0)}
-                      onChange={(e) => handleNumberChange('spouseIncome', e.target.value)}
-                      onFocus={() => handleNumberFocus('spouseIncome', household.spouseIncome ?? 0)}
-                      onBlur={() => handleNumberBlur('spouseIncome', 0)}
+                      onChange={(e) => handleIncomeChange('spouseIncome', e.target.value)}
+                      onFocus={() => handleIncomeFocus('spouseIncome', household.spouseIncome ?? 0)}
+                      onBlur={() => handleIncomeBlur('spouseIncome')}
                       disabled={disabled}
                       className="currency-field"
                     />

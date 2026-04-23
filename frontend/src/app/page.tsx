@@ -462,8 +462,8 @@ export default function Home() {
                       <span className="text-gray-500">Your Income</span>
                       <p className="font-medium text-gray-900">
                         {selectedEvent === 'changing_income' && eventParams.newIncome !== undefined
-                          ? `$${household.income.toLocaleString()} → $${(eventParams.newIncome as number).toLocaleString()}`
-                          : `$${household.income.toLocaleString()}`}
+                          ? `$${Math.round(household.income / 12).toLocaleString()} → $${Math.round((eventParams.newIncome as number) / 12).toLocaleString()}/mo`
+                          : `$${Math.round(household.income / 12).toLocaleString()}/mo`}
                       </p>
                     </div>
                     {(household.filingStatus === 'married_jointly' || household.filingStatus === 'married_separately') && (
@@ -471,8 +471,8 @@ export default function Home() {
                         <span className="text-gray-500">Partner Income</span>
                         <p className="font-medium text-gray-900">
                           {selectedEvent === 'changing_income' && eventParams.newSpouseIncome !== undefined
-                            ? `$${(household.spouseIncome ?? 0).toLocaleString()} → $${(eventParams.newSpouseIncome as number).toLocaleString()}`
-                            : `$${(household.spouseIncome ?? 0).toLocaleString()}`}
+                            ? `$${Math.round((household.spouseIncome ?? 0) / 12).toLocaleString()} → $${Math.round((eventParams.newSpouseIncome as number) / 12).toLocaleString()}/mo`
+                            : `$${Math.round((household.spouseIncome ?? 0) / 12).toLocaleString()}/mo`}
                         </p>
                       </div>
                     )}

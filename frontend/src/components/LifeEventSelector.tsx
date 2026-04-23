@@ -57,12 +57,31 @@ export default function LifeEventSelector({
     return editingField === key ? editingValue : (eventParams[key] as number) ?? fallback;
   };
 
-  const getIncomeInputValue = (key: string, fallback: number) => {
-    if (editingField === key) {
-      return editingValue;
+  // Income params: display/accept monthly, store annual
+  const handleIncomeParamChange = (key: string, value: string) => {
+    setEditingValue(value);
+    const monthly = parseInt(value.replace(/,/g, ''));
+    if (!isNaN(monthly)) {
+      onParamsChange({ ...eventParams, [key]: monthly * 12 });
     }
-    const value = (eventParams[key] as number) ?? fallback;
-    return formatWithCommas(value);
+  };
+
+  const handleIncomeParamFocus = (key: string, annualValue: number) => {
+    setEditingField(key);
+    setEditingValue(String(Math.round(annualValue / 12)));
+  };
+
+  const handleIncomeParamBlur = (key: string, defaultAnnual: number) => {
+    const monthly = parseInt(editingValue.replace(/,/g, ''));
+    onParamsChange({ ...eventParams, [key]: isNaN(monthly) || editingValue === '' ? defaultAnnual : monthly * 12 });
+    setEditingField(null);
+    setEditingValue('');
+  };
+
+  const getIncomeInputValue = (key: string, annualFallback: number) => {
+    if (editingField === key) return editingValue;
+    const annual = (eventParams[key] as number) ?? annualFallback;
+    return formatWithCommas(Math.round(annual / 12));
   };
 
   const getIncompatibilityMessage = (eventType: LifeEventType): string | null => {
@@ -127,16 +146,16 @@ export default function LifeEventSelector({
               </div>
 
               <div>
-                <label className="label">Partner&apos;s Annual Income</label>
+                <label className="label">Partner&apos;s Monthly Income</label>
                 <div className={`currency-input ${disabled ? 'disabled' : ''}`}>
                   <span className="currency-prefix">$</span>
                   <input
                     type="text"
                     inputMode="numeric"
                     value={getIncomeInputValue('spouseIncome', 0)}
-                    onChange={(e) => handleParamChange('spouseIncome', e.target.value)}
-                    onFocus={() => handleParamFocus('spouseIncome', (eventParams.spouseIncome as number) || 0)}
-                    onBlur={() => handleParamBlur('spouseIncome', 0)}
+                    onChange={(e) => handleIncomeParamChange('spouseIncome', e.target.value)}
+                    onFocus={() => handleIncomeParamFocus('spouseIncome', (eventParams.spouseIncome as number) || 0)}
+                    onBlur={() => handleIncomeParamBlur('spouseIncome', 0)}
                     disabled={disabled}
                     className="currency-field"
                   />
@@ -340,43 +359,43 @@ export default function LifeEventSelector({
         return (
           <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
             <div>
-              <label className="label">{isMarried ? 'Your New Income' : 'New Annual Income'}</label>
+              <label className="label">{isMarried ? 'Your New Monthly Income' : 'New Monthly Income'}</label>
               <div className={`currency-input ${disabled ? 'disabled' : ''}`}>
                 <span className="currency-prefix">$</span>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={getIncomeInputValue('newIncome', household.income)}
-                  onChange={(e) => handleParamChange('newIncome', e.target.value)}
-                  onFocus={() => handleParamFocus('newIncome', (eventParams.newIncome as number) ?? household.income)}
-                  onBlur={() => handleParamBlur('newIncome', household.income)}
+                  onChange={(e) => handleIncomeParamChange('newIncome', e.target.value)}
+                  onFocus={() => handleIncomeParamFocus('newIncome', (eventParams.newIncome as number) ?? household.income)}
+                  onBlur={() => handleIncomeParamBlur('newIncome', household.income)}
                   disabled={disabled}
                   className="currency-field"
                 />
               </div>
               <p className="mt-1.5 text-xs text-gray-500">
-                Current: ${household.income.toLocaleString()}
+                Current: ${Math.round(household.income / 12).toLocaleString()}/mo
               </p>
             </div>
 
             {isMarried && (
               <div>
-                <label className="label">Partner&apos;s New Income</label>
+                <label className="label">Partner&apos;s New Monthly Income</label>
                 <div className={`currency-input ${disabled ? 'disabled' : ''}`}>
                   <span className="currency-prefix">$</span>
                   <input
                     type="text"
                     inputMode="numeric"
                     value={getIncomeInputValue('newSpouseIncome', household.spouseIncome)}
-                    onChange={(e) => handleParamChange('newSpouseIncome', e.target.value)}
-                    onFocus={() => handleParamFocus('newSpouseIncome', (eventParams.newSpouseIncome as number) ?? household.spouseIncome)}
-                    onBlur={() => handleParamBlur('newSpouseIncome', household.spouseIncome)}
+                    onChange={(e) => handleIncomeParamChange('newSpouseIncome', e.target.value)}
+                    onFocus={() => handleIncomeParamFocus('newSpouseIncome', (eventParams.newSpouseIncome as number) ?? household.spouseIncome)}
+                    onBlur={() => handleIncomeParamBlur('newSpouseIncome', household.spouseIncome)}
                     disabled={disabled}
                     className="currency-field"
                   />
                 </div>
                 <p className="mt-1.5 text-xs text-gray-500">
-                  Current: ${household.spouseIncome.toLocaleString()}
+                  Current: ${Math.round(household.spouseIncome / 12).toLocaleString()}/mo
                 </p>
               </div>
             )}
