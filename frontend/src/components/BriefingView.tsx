@@ -344,11 +344,11 @@ function AnalystCard({ result, eventType }: { result: SimulationResult; eventTyp
       <blockquote className="border-l-4 border-[#319795] bg-[#F0FAFA] px-4 py-3 rounded-r-lg text-sm text-gray-700">
         {note}
       </blockquote>
-      <p className="text-xs text-gray-400 mt-3">Modeled by PolicyEngine · U.S. 2025 rules</p>
+      <p className="text-xs text-gray-400 mt-3">Modeled by PolicyEngine · U.S. rules</p>
       <div className="border-t border-gray-100 mt-4 pt-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Caveats</p>
         <p className="text-xs text-gray-500">
-          Estimates use 2025 federal parameters. Actual plan costs vary by rating area.
+          Estimates use federal parameters for the selected year. Actual plan costs vary by rating area.
         </p>
       </div>
     </div>

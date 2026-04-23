@@ -177,11 +177,13 @@ export default function HouseholdForm({
             </label>
             <select
               id="year"
-              value={household.year || 2025}
+              value={household.year || 2026}
               onChange={(e) => updateField('year', parseInt(e.target.value))}
               disabled={disabled}
               className="select-field"
             >
+              <option value={2028}>2028</option>
+              <option value={2027}>2027</option>
               <option value={2026}>2026</option>
               <option value={2025}>2025</option>
               <option value={2024}>2024</option>

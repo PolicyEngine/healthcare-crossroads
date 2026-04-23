@@ -432,6 +432,8 @@ function YearPopover({ household, onHouseholdChange, onClose }: HouseholdPopover
         onChange={(e) => setYear(parseInt(e.target.value))}
         className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
       >
+        <option value={2028}>2028</option>
+        <option value={2027}>2027</option>
         <option value={2026}>2026</option>
         <option value={2025}>2025</option>
         <option value={2024}>2024</option>

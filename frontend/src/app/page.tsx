@@ -17,14 +17,14 @@ function decodeScenario(encoded: string): { household: Household; event: LifeEve
         state: data.h.state || 'CA',
         zipCode: data.h.zipCode || undefined,
         filingStatus: data.h.filingStatus || 'single',
-        income: data.h.income ?? 50000,
+        income: data.h.income ?? 60000,
         spouseIncome: data.h.spouseIncome ?? 0,
         spouseAge: data.h.spouseAge ?? 30,
         childAges: data.h.childAges || [],
         age: data.h.age ?? 30,
         hasESI: data.h.hasESI ?? false,
         spouseHasESI: data.h.spouseHasESI ?? false,
-        year: data.h.year ?? 2025,
+        year: data.h.year ?? 2026,
       };
       return { household, event: data.e, params: data.p || {} };
     }
@@ -35,14 +35,14 @@ function decodeScenario(encoded: string): { household: Household; event: LifeEve
 const DEFAULT_HOUSEHOLD: Household = {
   state: 'CA',
   filingStatus: 'single',
-  income: 50000,
+  income: 60000,
   spouseIncome: 0,
   spouseAge: 30,
   childAges: [],
   age: 30,
   hasESI: false,
   spouseHasESI: false,
-  year: 2025,
+  year: 2026,
 };
 
 export default function Home() {
