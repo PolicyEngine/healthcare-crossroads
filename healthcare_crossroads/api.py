@@ -116,7 +116,7 @@ def create_event_from_request(event_type: str, params: dict, household: Househol
             new_spouse_income=params.get("newSpouseIncome"),
         ),
         "retiring": lambda: Retirement(),
-        "divorce": lambda: Divorce(),
+        "divorce": lambda: Divorce(head_loses_esi=params.get("headLosesEsi", False)),
         "pregnancy": lambda: Pregnancy(),
         "unemployment": lambda: Unemployment(
             unemployment_compensation=params.get("unemploymentBenefits", 15000)

@@ -20,6 +20,7 @@ class Divorce(LifeEvent):
     """
 
     children_leave_with_spouse: list[int] | None = None
+    head_loses_esi: bool = False  # True when ESI came solely from spouse's employer
 
     @property
     def name(self) -> str:
@@ -51,6 +52,13 @@ class Divorce(LifeEvent):
         # Remove in reverse order to maintain correct indices
         for idx in sorted(indices_to_remove, reverse=True):
             new_household.members.pop(idx)
+
+        # Strip ESI from head if it was provided through the spouse's employer
+        if self.head_loses_esi:
+            for member in new_household.members:
+                if member.is_tax_unit_head:
+                    member.has_esi = False
+                    break
 
         return new_household
 

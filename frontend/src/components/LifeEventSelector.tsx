@@ -227,9 +227,32 @@ export default function LifeEventSelector({
           </div>
         );
 
-      case 'divorce':
+      case 'divorce': {
+        const bothHaveEsi = household.hasESI && household.spouseHasESI;
         return (
-          <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+            {bothHaveEsi && (
+              <div>
+                <label className="label">Whose employer provides the coverage?</label>
+                <select
+                  value={(eventParams.esiProvider as string) || 'both'}
+                  onChange={(e) => {
+                    const provider = e.target.value;
+                    onParamsChange({
+                      ...eventParams,
+                      esiProvider: provider,
+                      headLosesEsi: provider === 'spouse',
+                    });
+                  }}
+                  disabled={disabled}
+                  className="select-field"
+                >
+                  <option value="both">Both — separate jobs</option>
+                  <option value="yours">Yours</option>
+                  <option value="spouse">Partner&apos;s</option>
+                </select>
+              </div>
+            )}
             {household.childAges.length > 0 && (
               <div>
                 <label className="label">Children staying with you</label>
@@ -251,6 +274,7 @@ export default function LifeEventSelector({
             )}
           </div>
         );
+      }
 
       case 'moving_states':
         return (
