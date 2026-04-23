@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Household, US_STATES } from '@/types';
+import { Household, US_STATES, getStateFromZip } from '@/types';
 
 interface HouseholdFormProps {
   household: Household;
@@ -116,7 +116,7 @@ export default function HouseholdForm({
             <select
               id="state"
               value={household.state}
-              onChange={(e) => updateField('state', e.target.value)}
+              onChange={(e) => onChange({ ...household, state: e.target.value, zipCode: undefined })}
               disabled={disabled}
               className="select-field"
             >
@@ -141,7 +141,12 @@ export default function HouseholdForm({
               value={household.zipCode ?? ''}
               onChange={(e) => {
                 const v = e.target.value.replace(/\D/g, '').slice(0, 5);
-                updateField('zipCode', v || undefined);
+                const detectedState = v.length === 5 ? getStateFromZip(v) : null;
+                onChange({
+                  ...household,
+                  zipCode: v || undefined,
+                  ...(detectedState ? { state: detectedState } : {}),
+                });
               }}
               disabled={disabled}
               className="input-field"

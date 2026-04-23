@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { EventIcon } from '@/components/ScenarioIcons';
-import { LifeEvent, LifeEventType, LIFE_EVENTS, US_STATES, Household } from '@/types';
+import { LifeEvent, LifeEventType, LIFE_EVENTS, US_STATES, Household, getStateFromZip } from '@/types';
 
 interface LifeEventSelectorProps {
   selectedEvent: LifeEventType | null;
@@ -261,7 +261,7 @@ export default function LifeEventSelector({
                 <select
                   value={(eventParams.newState as string) || 'TX'}
                   onChange={(e) =>
-                    onParamsChange({ ...eventParams, newState: e.target.value })
+                    onParamsChange({ ...eventParams, newState: e.target.value, newZipCode: undefined })
                   }
                   disabled={disabled}
                   className="select-field"
@@ -282,7 +282,12 @@ export default function LifeEventSelector({
                   value={(eventParams.newZipCode as string) ?? ''}
                   onChange={(e) => {
                     const v = e.target.value.replace(/\D/g, '').slice(0, 5);
-                    onParamsChange({ ...eventParams, newZipCode: v || undefined });
+                    const detectedState = v.length === 5 ? getStateFromZip(v) : null;
+                    onParamsChange({
+                      ...eventParams,
+                      newZipCode: v || undefined,
+                      ...(detectedState ? { newState: detectedState } : {}),
+                    });
                   }}
                   disabled={disabled}
                   className="input-field"
