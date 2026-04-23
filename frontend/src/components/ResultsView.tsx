@@ -1,6 +1,5 @@
 'use client';
 
-import { CoverageIcon } from '@/components/ScenarioIcons';
 import { BenefitMetric, HealthcareCoverage, SimulationResult } from '@/types';
 
 interface ResultsViewProps {
@@ -22,11 +21,6 @@ function formatMonthly(value: number): string {
   return formatCurrency(value / 12);
 }
 
-function formatChange(value: number): string {
-  const prefix = value >= 0 ? '+' : '';
-  return `${prefix}${formatCurrency(value)}`;
-}
-
 function formatMonthlyChange(value: number): string {
   const prefix = value >= 0 ? '+' : '';
   return `${prefix}${formatMonthly(value)}`;
@@ -39,260 +33,78 @@ function getCoverageLabel(type: string | null): string {
     case 'Marketplace':
       return 'ACA Marketplace';
     default:
-      return type || 'No Identified Coverage';
+      return type || '—';
   }
 }
 
-function isChildLabel(label: string): boolean {
-  return label.startsWith('Child ');
+function SectionRow({ label }: { label: string }) {
+  return (
+    <tr className="bg-gray-50">
+      <td colSpan={4} className="px-5 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        {label}
+      </td>
+    </tr>
+  );
 }
 
-function formatPersonLabel(
-  label: string,
-  options?: {
-    isNew?: boolean;
-    isNewBabyScenario?: boolean;
-  }
-): string {
-  if (options?.isNew && options.isNewBabyScenario && isChildLabel(label)) {
-    return `${label} (new baby)`;
-  }
+function CoverageRow({
+  label,
+  beforeCoverage,
+  afterCoverage,
+  existsBefore,
+  existsAfter,
+  striped,
+}: {
+  label: string;
+  beforeCoverage: string | null;
+  afterCoverage: string | null;
+  existsBefore: boolean;
+  existsAfter: boolean;
+  striped: boolean;
+}) {
+  const beforeText = existsBefore ? getCoverageLabel(beforeCoverage) : '—';
+  const afterText = existsAfter ? getCoverageLabel(afterCoverage) : '—';
+  const changed = beforeCoverage !== afterCoverage || existsBefore !== existsAfter;
 
-  if (options?.isNew) {
-    return `${label} (new)`;
-  }
-
-  return label;
+  return (
+    <tr className={striped ? 'bg-gray-50/50' : 'bg-white'}>
+      <td className="px-5 py-3 text-sm font-medium text-gray-800 w-40">{label}</td>
+      <td className="px-5 py-3 text-sm text-gray-500">{beforeText}</td>
+      <td className={`px-5 py-3 text-sm ${changed ? 'font-semibold text-[#2C7A7B]' : 'text-gray-500'}`}>
+        {afterText}
+      </td>
+      <td className="px-5 py-3 text-sm text-gray-400">
+        {changed && beforeText !== afterText && (
+          <span className="text-[#2C7A7B]">→</span>
+        )}
+      </td>
+    </tr>
+  );
 }
 
-function formatBeforeCoverageLabel(
-  label: string,
-  coverageType: string | null,
-  isNewBabyScenario: boolean
-): string {
-  if (coverageType === null && isNewBabyScenario && isChildLabel(label)) {
-    return 'No previous coverage (new baby)';
-  }
-
-  return getCoverageLabel(coverageType);
-}
-
-function getCoverageForPerson(coverage: HealthcareCoverage | undefined, label: string): string | null {
-  return coverage?.people.find((person) => person.label === label)?.coverage ?? null;
-}
-
-function getCoverageChanges(before?: HealthcareCoverage, after?: HealthcareCoverage) {
-  const labels = new Set<string>();
-
-  before?.people.forEach((person) => labels.add(person.label));
-  after?.people.forEach((person) => labels.add(person.label));
-
-  return Array.from(labels)
-    .map((label) => ({
-      label,
-      before: getCoverageForPerson(before, label),
-      after: getCoverageForPerson(after, label),
-    }))
-    .filter((change) => change.before !== change.after);
-}
-
-function SummaryCard({
-  title,
+function FinancialRow({
+  label,
   before,
   after,
-  icon,
+  striped,
 }: {
-  title: string;
+  label: string;
   before: number;
   after: number;
-  icon: React.ReactNode;
+  striped: boolean;
 }) {
   const diff = after - before;
-  const tone =
-    diff > 0 ? 'bg-green-50 text-green-600' : diff < 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500';
+  const tone = diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-gray-400';
 
   return (
-    <div className="card p-5">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
-          {icon}
-        </div>
-        <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-      </div>
-      <div className="flex items-baseline gap-3">
-        <span className="text-2xl font-bold text-gray-900">{formatMonthly(after)}/mo</span>
-        <span className={`text-sm font-semibold px-2 py-0.5 rounded-full ${tone}`}>
-          {formatMonthlyChange(diff)}/mo
-        </span>
-      </div>
-      <p className="mt-1.5 text-sm text-gray-400">was {formatMonthly(before)}/mo</p>
-    </div>
-  );
-}
-
-function CountCard({
-  title,
-  value,
-  subtitle,
-  icon,
-}: {
-  title: string;
-  value: number;
-  subtitle: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className="card p-5">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-          {icon}
-        </div>
-        <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-      </div>
-      <div className="text-2xl font-bold text-gray-900">{value}</div>
-      <p className="mt-1.5 text-sm text-gray-400">{subtitle}</p>
-    </div>
-  );
-}
-
-function CoverageOutcomeCard({
-  before,
-  after,
-  isNewBabyScenario,
-}: {
-  before?: HealthcareCoverage;
-  after?: HealthcareCoverage;
-  isNewBabyScenario: boolean;
-}) {
-  if (!before && !after) return null;
-
-  const coverageTypes = ['ESI', 'Medicaid', 'CHIP', 'Marketplace'] as const;
-  const hasCoverage = coverageTypes.some((type) => (after?.summary[type]?.length || 0) > 0);
-
-  if (!hasCoverage) {
-    return (
-      <div className="card p-6">
-        <h3 className="text-base font-semibold text-gray-900 mb-2">Coverage After This Change</h3>
-        <p className="text-sm text-gray-500">No identified Medicaid, CHIP, marketplace, or employer coverage was returned for this scenario.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="card p-6">
-      <h3 className="text-base font-semibold text-gray-900 mb-4">Coverage After This Change</h3>
-      <div className="space-y-2">
-        {coverageTypes.map((type) => {
-          const afterPeople = after?.summary[type] || [];
-          const beforePeople = before?.summary[type] || [];
-
-          if (afterPeople.length === 0) return null;
-
-          return (
-            <div key={type} className="flex items-center gap-3 py-2 px-3 rounded-lg bg-gray-50">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[#476072] shadow-sm ring-1 ring-[#D9E4EC]">
-                <CoverageIcon type={type} className="h-[18px] w-[18px]" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-gray-700">{getCoverageLabel(type)}</div>
-                <div className="text-sm text-gray-600">
-                  {afterPeople.map((person, index) => {
-                    const isNew = !beforePeople.includes(person);
-                    return (
-                      <span key={person}>
-                        {index > 0 && ', '}
-                        <span className={isNew ? 'text-green-600 font-medium' : ''}>
-                          {formatPersonLabel(person, { isNew, isNewBabyScenario })}
-                        </span>
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function CoverageChangesCard({
-  before,
-  after,
-  isNewBabyScenario,
-}: {
-  before?: HealthcareCoverage;
-  after?: HealthcareCoverage;
-  isNewBabyScenario: boolean;
-}) {
-  const changes = getCoverageChanges(before, after);
-
-  if (changes.length === 0) return null;
-
-  return (
-    <div className="card p-6">
-      <h3 className="text-base font-semibold text-gray-900 mb-4">Who Changed Coverage</h3>
-      <div className="space-y-2">
-        {changes.map((change) => (
-          <div key={change.label} className="flex items-center justify-between gap-4 py-2 px-3 rounded-lg bg-[#F9FAFB]">
-            <span className="text-sm font-medium text-gray-800">
-              {formatPersonLabel(change.label, {
-                isNew: change.before === null && change.after !== null,
-                isNewBabyScenario,
-              })}
-            </span>
-            <span className="text-sm text-gray-600 text-right">
-              {formatBeforeCoverageLabel(change.label, change.before, isNewBabyScenario)}
-              <span className="mx-2 text-gray-300">→</span>
-              <span className="font-medium text-gray-900">{getCoverageLabel(change.after)}</span>
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SupportChangesCard({ metrics }: { metrics: BenefitMetric[] }) {
-  const supportMetrics = metrics
-    .filter((metric) => SUPPORT_METRIC_NAMES.has(metric.name))
-    .filter((metric) => metric.before !== 0 || metric.after !== 0);
-
-  if (supportMetrics.length === 0) {
-    return (
-      <div className="card p-6">
-        <h3 className="text-base font-semibold text-gray-900 mb-2">Healthcare Support Changes</h3>
-        <p className="text-sm text-gray-500">No dollar-denominated healthcare support changed in this scenario.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="card p-6">
-      <h3 className="text-base font-semibold text-gray-900 mb-4">Healthcare Support Changes</h3>
-      <div className="space-y-3">
-        {supportMetrics.map((metric) => {
-          const diff = metric.after - metric.before;
-          const tone =
-            diff > 0 ? 'bg-green-50 text-green-600' : diff < 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500';
-
-          return (
-            <div key={metric.name} className="rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900">{metric.label}</h4>
-                  <p className="text-xs text-gray-500">Before {formatMonthly(metric.before)}/mo · After {formatMonthly(metric.after)}/mo</p>
-                </div>
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${tone}`}>
-                  {formatMonthlyChange(diff)}/mo
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <tr className={striped ? 'bg-gray-50/50' : 'bg-white'}>
+      <td className="px-5 py-3 text-sm font-medium text-gray-800 w-40">{label}</td>
+      <td className="px-5 py-3 text-sm text-gray-500 tabular-nums">{formatMonthly(before)}</td>
+      <td className="px-5 py-3 text-sm text-gray-500 tabular-nums">{formatMonthly(after)}</td>
+      <td className={`px-5 py-3 text-sm font-semibold tabular-nums ${tone}`}>
+        {diff !== 0 ? formatMonthlyChange(diff) : '—'}
+      </td>
+    </tr>
   );
 }
 
@@ -307,68 +119,69 @@ export default function ResultsView({ result, onReset }: ResultsViewProps) {
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h3>
         <p className="text-gray-500 mb-4">The simulation returned incomplete data. Please try again.</p>
-        <button onClick={onReset} className="btn btn-primary">
-          Try Again
-        </button>
+        <button onClick={onReset} className="btn btn-primary">Try Again</button>
       </div>
     );
   }
 
   const metrics = result.before.metrics || [];
-  const premiumTaxCredit = metrics.find((metric) => metric.name === 'premium_tax_credit');
-  const coverageChanges = getCoverageChanges(result.healthcareBefore, result.healthcareAfter);
-  const isNewBabyScenario = result.event?.name === 'New Child';
+  const financialRows = [
+    { label: 'Net income', before: result.before.netIncome, after: result.after.netIncome },
+    ...metrics
+      .filter((m) => SUPPORT_METRIC_NAMES.has(m.name))
+      .filter((m) => m.before !== 0 || m.after !== 0)
+      .map((m: BenefitMetric) => ({ label: m.label, before: m.before, after: m.after })),
+  ];
+
+  const beforeLabels = new Set((result.healthcareBefore?.people || []).map((p) => p.label));
+  const afterLabels = new Set((result.healthcareAfter?.people || []).map((p) => p.label));
+  const allLabels = Array.from(new Set([...beforeLabels, ...afterLabels]));
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard
-          title="Net Income"
-          before={result.before.netIncome}
-          after={result.after.netIncome}
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
-        <SummaryCard
-          title="Premium Tax Credit"
-          before={premiumTaxCredit?.before || 0}
-          after={premiumTaxCredit?.after || 0}
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-4.418 0-8 1.79-8 4s3.582 4 8 4 8-1.79 8-4-3.582-4-8-4zm0 0V5m0 11v3" />
-            </svg>
-          }
-        />
-        <CountCard
-          title="Coverage Changes"
-          value={coverageChanges.length}
-          subtitle={coverageChanges.length === 1 ? '1 person moved to a new coverage type' : `${coverageChanges.length} people moved to a new coverage type`}
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5V4H2v16h5m10 0v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6m10 0H7" />
-            </svg>
-          }
-        />
+      <div className="card overflow-hidden">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-40" />
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Before</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">After</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Change</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            <SectionRow label="Coverage" />
+            {allLabels.map((label, i) => {
+              const beforeCoverage = result.healthcareBefore?.people.find((p) => p.label === label)?.coverage ?? null;
+              const afterCoverage = result.healthcareAfter?.people.find((p) => p.label === label)?.coverage ?? null;
+              return (
+                <CoverageRow
+                  key={label}
+                  label={label}
+                  beforeCoverage={beforeCoverage}
+                  afterCoverage={afterCoverage}
+                  existsBefore={beforeLabels.has(label)}
+                  existsAfter={afterLabels.has(label)}
+                  striped={i % 2 === 1}
+                />
+              );
+            })}
+
+            <SectionRow label="Financial (per month)" />
+            {financialRows.map(({ label, before, after }, i) => (
+              <FinancialRow
+                key={label}
+                label={label}
+                before={before}
+                after={after}
+                striped={i % 2 === 1}
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      <CoverageOutcomeCard
-        before={result.healthcareBefore}
-        after={result.healthcareAfter}
-        isNewBabyScenario={isNewBabyScenario}
-      />
-
-      <CoverageChangesCard
-        before={result.healthcareBefore}
-        after={result.healthcareAfter}
-        isNewBabyScenario={isNewBabyScenario}
-      />
-
-      <SupportChangesCard metrics={metrics} />
-
-      <div className="flex justify-center pt-4">
+      <div className="flex justify-center pt-2">
         <button onClick={onReset} className="btn btn-secondary">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
