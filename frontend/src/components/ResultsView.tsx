@@ -29,7 +29,7 @@ function formatMonthlyChange(value: number): string {
 function getCoverageLabel(type: string | null): string {
   switch (type) {
     case 'ESI':
-      return 'Employer Insurance';
+      return 'Employer-Sponsored Insurance';
     case 'Marketplace':
       return 'ACA Marketplace';
     default:

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import HouseholdForm from '@/components/HouseholdForm';
 import LifeEventSelector from '@/components/LifeEventSelector';
 import ResultsView from '@/components/ResultsView';
-import { Household, LifeEventType, SimulationResult } from '@/types';
+import { Household, LifeEventType, SimulationResult, LIFE_EVENTS } from '@/types';
 
 type Step = 'household' | 'event' | 'results';
 
@@ -353,7 +353,7 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">Running Simulation</h3>
                   <p className="text-gray-500 text-center max-w-sm">
-                    Calculating how {selectedEvent?.replace(/_/g, ' ')} changes healthcare coverage and support...
+                    Calculating how {LIFE_EVENTS.find(e => e.type === selectedEvent)?.label?.toLowerCase() ?? 'this change'} affects healthcare coverage and support...
                   </p>
                 </div>
               </div>
