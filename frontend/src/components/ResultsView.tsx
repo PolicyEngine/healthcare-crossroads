@@ -73,11 +73,7 @@ function CoverageRow({
       <td className={`px-5 py-3 text-sm ${changed ? 'font-semibold text-[#2C7A7B]' : 'text-gray-500'}`}>
         {afterText}
       </td>
-      <td className="px-5 py-3 text-sm text-gray-400">
-        {changed && beforeText !== afterText && (
-          <span className="text-[#2C7A7B]">→</span>
-        )}
-      </td>
+      <td className="px-5 py-3 text-sm text-gray-400" />
     </tr>
   );
 }
@@ -133,9 +129,13 @@ export default function ResultsView({ result, onReset }: ResultsViewProps) {
       .map((m: BenefitMetric) => ({ label: m.label, before: m.before, after: m.after })),
   ];
 
+  const isPregnancyScenario = result.event?.name === 'Pregnancy';
   const beforeLabels = new Set((result.healthcareBefore?.people || []).map((p) => p.label));
   const afterLabels = new Set((result.healthcareAfter?.people || []).map((p) => p.label));
-  const allLabels = Array.from(new Set([...beforeLabels, ...afterLabels]));
+  // For pregnancy, only show existing members — the fetus is not yet a person with coverage
+  const allLabels = isPregnancyScenario
+    ? Array.from(beforeLabels)
+    : Array.from(new Set([...beforeLabels, ...afterLabels]));
 
   return (
     <div className="space-y-6">
