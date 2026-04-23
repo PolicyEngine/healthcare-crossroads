@@ -29,6 +29,7 @@ class Move(LifeEvent):
     """
 
     new_state: str
+    new_zip_code: str | None = None
 
     @property
     def name(self) -> str:
@@ -42,6 +43,7 @@ class Move(LifeEvent):
         """Move the household to a new state."""
         new_household = household.copy()
         new_household.state = self.new_state
+        new_household.zip_code = self.new_zip_code
         return new_household
 
     def validate(self, household: Household) -> list[str]:

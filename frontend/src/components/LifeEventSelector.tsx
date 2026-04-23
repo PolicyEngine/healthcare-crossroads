@@ -254,22 +254,41 @@ export default function LifeEventSelector({
 
       case 'moving_states':
         return (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <label className="label">New State</label>
-            <select
-              value={(eventParams.newState as string) || 'TX'}
-              onChange={(e) =>
-                onParamsChange({ ...eventParams, newState: e.target.value })
-              }
-              disabled={disabled}
-              className="select-field"
-            >
-              {US_STATES.filter((state) => state.code !== household.state).map((state) => (
-                <option key={state.code} value={state.code}>
-                  {state.name}
-                </option>
-              ))}
-            </select>
+          <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">New State</label>
+                <select
+                  value={(eventParams.newState as string) || 'TX'}
+                  onChange={(e) =>
+                    onParamsChange({ ...eventParams, newState: e.target.value })
+                  }
+                  disabled={disabled}
+                  className="select-field"
+                >
+                  {US_STATES.filter((state) => state.code !== household.state).map((state) => (
+                    <option key={state.code} value={state.code}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">New Zip Code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={(eventParams.newZipCode as string) ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 5);
+                    onParamsChange({ ...eventParams, newZipCode: v || undefined });
+                  }}
+                  disabled={disabled}
+                  className="input-field"
+                />
+              </div>
+            </div>
           </div>
         );
 
