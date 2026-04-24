@@ -179,7 +179,7 @@ export default function InputStrip({
 
   return (
     <div className="relative w-full bg-white border border-gray-200 rounded-xl shadow-sm px-2 py-1.5">
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-9 sm:gap-1">
+      <div className="input-strip-grid grid grid-cols-3 gap-2 sm:gap-1">
         {/* 1. LOCATION */}
         <div className="relative">
           <Chip
