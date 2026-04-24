@@ -236,7 +236,7 @@ export default function ResultsView({ result, eventType, onReset }: ResultsViewP
     .filter((m) => m.before !== 0 || m.after !== 0)
     .map((m: BenefitMetric) => ({ label: m.label, before: m.before, after: m.after }));
 
-  const isPregnancyScenario = result.event?.name === 'Pregnancy';
+  const isPregnancyScenario = eventType === 'having_baby';
   const beforeLabels = new Set((result.healthcareBefore?.people || []).map((p) => p.label));
   const afterLabels = new Set((result.healthcareAfter?.people || []).map((p) => p.label));
   // For pregnancy, only show existing members — the fetus is not yet a person with coverage
