@@ -467,6 +467,6 @@ select {
 @media (min-width: 640px) {
   .input-strip-grid {
     /* Location · Year · Filing · Age · Income · ESI · Children · Event · Run */
-    grid-template-columns: 1fr 0.65fr 1.5fr 1fr 1.2fr 0.8fr 0.8fr 1.5fr auto;
+    grid-template-columns: 1fr 0.65fr 1.5fr 1fr 1.2fr 0.8fr 0.8fr;
   }
 }

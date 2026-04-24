@@ -177,144 +177,86 @@ export default function InputStrip({
 
   const locationDisplay = `${household.state}${household.zipCode ? ' · ' + household.zipCode : ''}`;
 
+  const selectedEventObj = LIFE_EVENTS.find(e => e.type === selectedEvent);
+
   return (
-    <div className="relative w-full bg-white border border-gray-200 rounded-xl shadow-sm px-2 py-1.5">
-      <div className="input-strip-grid grid grid-cols-3 gap-2 sm:gap-1">
+    <div className="relative w-full bg-white border border-gray-200 rounded-xl shadow-sm overflow-visible">
+      {/* Row 1: Household details */}
+      <div className="input-strip-grid grid grid-cols-3 gap-2 sm:gap-0 px-2 pt-1.5 pb-1">
         {/* 1. LOCATION */}
         <div className="relative">
-          <Chip
-            label="Location"
-            value={locationDisplay}
-            isOpen={editField === 'location'}
-            isHighlighted={highlightedChip === 'location'}
-            onClick={() => openField('location')}
-          />
-          {editField === 'location' && (
-            <LocationPopover
-              household={household}
-              onHouseholdChange={onHouseholdChange}
-              onClose={closeField}
-            />
-          )}
+          <Chip label="Location" value={locationDisplay} isOpen={editField === 'location'} isHighlighted={highlightedChip === 'location'} onClick={() => openField('location')} />
+          {editField === 'location' && <LocationPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
         </div>
 
         {/* 2. YEAR */}
         <div className="relative">
-          <Chip
-            label="Year"
-            value={`${household.year}`}
-            isOpen={editField === 'year'}
-            isHighlighted={false}
-            onClick={() => openField('year')}
-          />
-          {editField === 'year' && (
-            <YearPopover
-              household={household}
-              onHouseholdChange={onHouseholdChange}
-              onClose={closeField}
-            />
-          )}
+          <Chip label="Year" value={`${household.year}`} isOpen={editField === 'year'} isHighlighted={false} onClick={() => openField('year')} />
+          {editField === 'year' && <YearPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
         </div>
 
         {/* 3. FILING */}
         <div className="relative">
-          <Chip
-            label="Filing"
-            value={FILING_LABELS[household.filingStatus]}
-            isOpen={editField === 'filing'}
-            isHighlighted={highlightedChip === 'filing'}
-            onClick={() => openField('filing')}
-          />
-          {editField === 'filing' && (
-            <FilingPopover
-              household={household}
-              onHouseholdChange={onHouseholdChange}
-              onClose={closeField}
-            />
-          )}
+          <Chip label="Filing" value={FILING_LABELS[household.filingStatus]} isOpen={editField === 'filing'} isHighlighted={highlightedChip === 'filing'} onClick={() => openField('filing')} />
+          {editField === 'filing' && <FilingPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
         </div>
 
         {/* 4. AGE */}
         <div className="relative">
-          <Chip
-            label="Age"
-            value={ageDisplay}
-            isOpen={editField === 'age'}
-            isHighlighted={false}
-            onClick={() => openField('age')}
-          />
-          {editField === 'age' && (
-            <AgePopover
-              household={household}
-              onHouseholdChange={onHouseholdChange}
-              onClose={closeField}
-            />
-          )}
+          <Chip label="Age" value={ageDisplay} isOpen={editField === 'age'} isHighlighted={false} onClick={() => openField('age')} />
+          {editField === 'age' && <AgePopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
         </div>
 
         {/* 5. INCOME */}
         <div className="relative">
-          <Chip
-            label="Income"
-            value={incomeDisplay}
-            isOpen={editField === 'income'}
-            isHighlighted={highlightedChip === 'income'}
-            onClick={() => openField('income')}
-          />
-          {editField === 'income' && (
-            <IncomePopover
-              household={household}
-              onHouseholdChange={onHouseholdChange}
-              onClose={closeField}
-            />
-          )}
+          <Chip label="Income" value={incomeDisplay} isOpen={editField === 'income'} isHighlighted={highlightedChip === 'income'} onClick={() => openField('income')} />
+          {editField === 'income' && <IncomePopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
         </div>
 
         {/* 6. ESI */}
         <div className="relative">
-          <Chip
-            label="ESI"
-            value={getEsiLabel(household)}
-            isOpen={editField === 'esi'}
-            isHighlighted={highlightedChip === 'esi'}
-            onClick={() => openField('esi')}
-          />
-          {editField === 'esi' && (
-            <EsiPopover
-              household={household}
-              onHouseholdChange={onHouseholdChange}
-              onClose={closeField}
-            />
-          )}
+          <Chip label="ESI" value={getEsiLabel(household)} isOpen={editField === 'esi'} isHighlighted={highlightedChip === 'esi'} onClick={() => openField('esi')} />
+          {editField === 'esi' && <EsiPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
         </div>
 
         {/* 7. CHILDREN */}
         <div className="relative">
-          <Chip
-            label="Children"
-            value={childDisplay}
-            isOpen={editField === 'children'}
-            isHighlighted={highlightedChip === 'children'}
-            onClick={() => openField('children')}
-          />
-          {editField === 'children' && (
-            <ChildrenPopover
-              household={household}
-              onHouseholdChange={onHouseholdChange}
-              onClose={closeField}
-            />
-          )}
+          <Chip label="Children" value={childDisplay} isOpen={editField === 'children'} isHighlighted={highlightedChip === 'children'} onClick={() => openField('children')} />
+          {editField === 'children' && <ChildrenPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
         </div>
+      </div>
 
-        {/* 8. EVENT */}
-        <div className="relative">
-          <Chip
-            label="Event"
-            value={eventLabel}
-            isOpen={editField === 'event'}
-            isHighlighted={false}
+      {/* Divider */}
+      <div className="border-t border-gray-100 mx-2" />
+
+      {/* Row 2: Event + Run */}
+      <div className="flex items-stretch gap-2 px-2 pb-1.5 pt-1">
+        <div className="relative flex-1">
+          <button
+            type="button"
             onClick={() => openField('event')}
-          />
+            className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
+              editField === 'event'
+                ? 'border-[#319795] bg-[#E6FFFA] ring-2 ring-[#319795]/20'
+                : selectedEvent
+                ? 'border-[#319795]/30 bg-[#F0FAFA] hover:bg-[#E6FFFA]'
+                : 'border-dashed border-gray-300 hover:border-[#319795]/50 hover:bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <div>
+                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-0.5 ${selectedEvent ? 'text-[#285E61]' : 'text-gray-400'}`}>
+                  Coverage change
+                </p>
+                <p className={`text-sm font-semibold leading-tight ${selectedEvent ? 'text-[#285E61]' : 'text-gray-400 italic'}`}>
+                  {selectedEvent ? selectedEventObj?.label : 'Pick a life event…'}
+                </p>
+                {selectedEventObj && (
+                  <p className="text-xs text-gray-500 mt-0.5 leading-tight">{selectedEventObj.description}</p>
+                )}
+              </div>
+            </div>
+          </button>
           {editField === 'event' && (
             <EventPopover
               household={household}
@@ -327,39 +269,27 @@ export default function InputStrip({
           )}
         </div>
 
-        {/* 9. RUN */}
-        <div className="flex items-center justify-center">
-          <button
-            type="button"
-            onClick={onRun}
-            disabled={!canRun || isLoading}
-            className="bg-[#319795] text-white rounded-lg px-3 py-2 font-semibold text-sm cursor-pointer hover:bg-[#2C7A7B] disabled:opacity-50 flex items-center justify-center gap-1.5 w-full h-full"
-          >
-            {isLoading ? (
-              <svg
-                className="w-4 h-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
+        {/* RUN */}
+        <button
+          type="button"
+          onClick={onRun}
+          disabled={!canRun || isLoading}
+          className="bg-[#319795] text-white rounded-lg px-5 py-2.5 font-semibold text-sm hover:bg-[#2C7A7B] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shrink-0 transition-colors"
+        >
+          {isLoading ? (
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : (
+            <>
+              <span>Run</span>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
               </svg>
-            ) : (
-              '→'
-            )}
-          </button>
-        </div>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
