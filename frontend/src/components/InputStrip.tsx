@@ -256,9 +256,9 @@ export default function InputStrip({
             )}
           </div>
 
-          {/* AGE (read-only, taps to edit household) */}
+          {/* AGE — display only, not a life-event input */}
           <div className="relative">
-            <Chip label="Age" before={ageBefore} isOpen={false} onClick={() => onEditHousehold?.()} />
+            <Chip label="Age" before={ageBefore} isOpen={false} onClick={() => {}} />
           </div>
 
           {/* INCOME */}
@@ -315,32 +315,13 @@ export default function InputStrip({
             )}
           </div>
 
-          {/* YEAR (inline edit stays — it's not an event) */}
+          {/* YEAR — display only */}
           <div className="relative">
-            <Chip label="Year" before={`${household.year}`} isOpen={openChip === 'year'} onClick={() => open('year')} />
-            {openChip === 'year' && (
-              <Popover onClose={close}>
-                <YearPopover household={household} onClose={close} />
-              </Popover>
-            )}
+            <Chip label="Year" before={`${household.year}`} isOpen={false} onClick={() => {}} />
           </div>
 
         </div>
 
-        {/* Edit household button */}
-        {onEditHousehold && (
-          <button
-            type="button"
-            onClick={onEditHousehold}
-            className="shrink-0 ml-1 flex flex-col items-center justify-center px-2.5 py-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 hover:text-[#319795] hover:bg-gray-50 rounded-lg transition-colors self-stretch"
-            title="Edit household setup"
-          >
-            <svg className="w-3.5 h-3.5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-            Edit
-          </button>
-        )}
       </div>
 
       {/* Event summary + Calculate row — appears when an event is selected */}

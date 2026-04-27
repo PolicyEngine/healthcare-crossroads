@@ -162,16 +162,30 @@ export default function Home() {
             </>
           ) : household ? (
             <>
-              <div className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-widest uppercase text-[#285E61] bg-[#E6FFFA] px-3 py-1.5 rounded-full mb-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#319795]" />
-                Choose a coverage change
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-widest uppercase text-[#285E61] bg-[#E6FFFA] px-3 py-1.5 rounded-full mb-3">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#319795]" />
+                    Your household
+                  </div>
+                  <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
+                    Click any detail to model a change.
+                  </h1>
+                  <p className="text-[15px] text-gray-500 leading-relaxed">
+                    {household.state}{household.zipCode ? ` · ${household.zipCode}` : ''} ·{' '}
+                    {household.filingStatus === 'married_jointly' || household.filingStatus === 'married_separately'
+                      ? `Married · age ${household.age} & ${household.spouseAge}`
+                      : `Single · age ${household.age}`} ·{' '}
+                    ${Math.round(household.income / 12).toLocaleString()}/mo
+                  </p>
+                </div>
+                <button
+                  onClick={handleReset}
+                  className="shrink-0 text-sm text-gray-400 hover:text-gray-600 transition-colors mt-1"
+                >
+                  Start over
+                </button>
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
-                What coverage change do you want to model?
-              </h1>
-              <p className="text-[15px] text-gray-500 leading-relaxed">
-                Select a life event below, edit the details, and hit Calculate.
-              </p>
             </>
           ) : (
             <>
@@ -259,9 +273,8 @@ export default function Home() {
           </div>
         )}
 
-        <footer className="mt-10 flex justify-between text-xs text-gray-400">
+        <footer className="mt-10 text-xs text-gray-400">
           <span>Powered by <a href="https://policyengine.org" target="_blank" rel="noopener noreferrer" className="text-[#319795] font-medium">PolicyEngine</a></span>
-          <span>Estimates · not legal or financial advice</span>
         </footer>
       </div>
     </div>
