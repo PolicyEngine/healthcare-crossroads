@@ -80,12 +80,16 @@ def create_household_from_request(data: dict) -> Household:
 
     # Add spouse if married
     filing_status = data.get("filingStatus", "single")
+    pregnant_member = data.get("pregnantMember")  # 'head', 'spouse', or null
+    head.is_pregnant = pregnant_member == "head"
+
     if filing_status in ("married_jointly", "married_separately"):
         spouse = Person(
             age=data.get("spouseAge", data.get("age", 30)),
             employment_income=data.get("spouseIncome", 0),
             is_tax_unit_spouse=True,
             has_esi=data.get("spouseHasESI", False),
+            is_pregnant=pregnant_member == "spouse",
         )
         members.append(spouse)
 

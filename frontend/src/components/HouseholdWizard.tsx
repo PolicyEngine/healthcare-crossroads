@@ -11,7 +11,7 @@ interface HouseholdWizardProps {
 
 type FilingStatus = Household['filingStatus'];
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 function isMarriedStatus(status: FilingStatus): boolean {
   return status === 'married_jointly' || status === 'married_separately';
@@ -35,6 +35,7 @@ export default function HouseholdWizard({ onComplete, onBack, onPartialChange }:
   const [spouseHasESI, setSpouseHasESI] = useState<boolean>(false);
 
   const [childAges, setChildAges] = useState<Array<number | ''>>([]);
+  const [pregnantMember, setPregnantMember] = useState<'head' | 'spouse' | null>(null);
 
   const married = isMarriedStatus(filingStatus);
 
@@ -140,6 +141,7 @@ export default function HouseholdWizard({ onComplete, onBack, onPartialChange }:
       spouseHasESI,
       childAges: childAges.map((a) => (a === '' ? 0 : a)),
       year: 2026,
+      pregnantMember: pregnantMember ?? null,
     };
 
     onComplete(household);
@@ -183,7 +185,7 @@ export default function HouseholdWizard({ onComplete, onBack, onPartialChange }:
               />
               {stateName && (
                 <p className="text-sm font-medium text-[#285E61]">
-                  📍 {stateName}
+                  {stateName}
                 </p>
               )}
             </div>
@@ -495,7 +497,79 @@ export default function HouseholdWizard({ onComplete, onBack, onPartialChange }:
               </button>
               <button
                 type="button"
+                onClick={goNext}
+                className="btn btn-primary"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 7 && (
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Is anyone currently pregnant?</h2>
+            <p className="text-sm text-gray-500 mb-6">Pregnancy expands Medicaid eligibility in most states.</p>
+            <div className="flex flex-col gap-0">
+              {married ? (
+                <>
+                  {(
+                    [
+                      { label: 'Yes — me', value: 'head' as const },
+                      { label: 'Yes — my partner', value: 'spouse' as const },
+                      { label: 'No', value: null as null },
+                    ]
+                  ).map((opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() => { setPregnantMember(opt.value); }}
+                      className={`w-full text-left px-4 py-3 rounded-xl border-2 font-medium transition-all mb-2 ${
+                        pregnantMember === opt.value
+                          ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]'
+                          : 'border-gray-200 text-gray-900 hover:border-[#319795] hover:bg-[#E6FFFA]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {(
+                    [
+                      { label: 'Yes', value: 'head' as const },
+                      { label: 'No', value: null as null },
+                    ]
+                  ).map((opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() => { setPregnantMember(opt.value); }}
+                      className={`w-full text-left px-4 py-3 rounded-xl border-2 font-medium transition-all mb-2 ${
+                        pregnantMember === opt.value
+                          ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]'
+                          : 'border-gray-200 text-gray-900 hover:border-[#319795] hover:bg-[#E6FFFA]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+            <div className="flex justify-between mt-4">
+              <button
+                type="button"
+                onClick={goBack}
+                className="btn btn-ghost"
+              >
+                Back
+              </button>
+              <button
+                type="button"
                 onClick={handleComplete}
+                disabled={false}
                 className="btn btn-primary"
               >
                 Done

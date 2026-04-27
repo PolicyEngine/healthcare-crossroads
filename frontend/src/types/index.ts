@@ -70,6 +70,7 @@ export interface Household {
   hasESI: boolean;
   spouseHasESI: boolean;
   year: number;
+  pregnantMember?: 'head' | 'spouse' | null;
 }
 
 export type EventIconName =

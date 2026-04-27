@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import HouseholdWizard from '@/components/HouseholdWizard';
 import InputStrip from '@/components/InputStrip';
-import EventCards from '@/components/EventCards';
 import ResultsView from '@/components/ResultsView';
 import { Household, LifeEventType, SimulationResult, LIFE_EVENTS } from '@/types';
 
@@ -195,7 +194,6 @@ export default function Home() {
           <div className="pointer-events-none opacity-60 mb-4">
             <InputStrip
               household={{ state: 'CA', filingStatus: 'single', income: 0, spouseIncome: 0, spouseAge: 30, childAges: [], age: 30, hasESI: false, spouseHasESI: false, year: 2026, ...partialHousehold } as Household}
-              onHouseholdChange={() => {}}
               selectedEvent={null}
               onEventSelect={() => {}}
               eventParams={{}}
@@ -215,33 +213,19 @@ export default function Home() {
           />
         )}
 
-        {/* Household entered — show input strip + event cards */}
+        {/* Household entered — show input strip */}
         {household && (
-          <>
-            <InputStrip
-              household={household}
-              onHouseholdChange={(h) => { setHousehold(h); setResult(null); }}
-              selectedEvent={selectedEvent}
-              onEventSelect={(e) => { setSelectedEvent(e); setEventParams({}); setResult(null); }}
-              eventParams={eventParams}
-              onParamsChange={setEventParams}
-              onRun={handleRun}
-              isLoading={isLoading}
-              canRun={selectedEvent !== null}
-            />
-
-            <div className="mt-4">
-              <EventCards
-                household={household}
-                selectedEvent={selectedEvent}
-                onEventSelect={(e) => { setSelectedEvent(e); setEventParams({}); setResult(null); }}
-                eventParams={eventParams}
-                onParamsChange={setEventParams}
-                onRun={handleRun}
-                isLoading={isLoading}
-              />
-            </div>
-          </>
+          <InputStrip
+            household={household}
+            onEditHousehold={handleReset}
+            selectedEvent={selectedEvent}
+            onEventSelect={(e) => { setSelectedEvent(e); setResult(null); }}
+            eventParams={eventParams}
+            onParamsChange={setEventParams}
+            onRun={handleRun}
+            isLoading={isLoading}
+            canRun={selectedEvent !== null}
+          />
         )}
 
         {/* Loading */}

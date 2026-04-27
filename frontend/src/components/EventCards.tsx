@@ -501,6 +501,9 @@ function getIncompatibilityMessage(
   if (eventType === 'losing_esi' && !household.hasESI) {
     return "You don't currently have employer insurance.";
   }
+  if (eventType === 'having_baby' && household.pregnantMember) {
+    return "You noted someone in the household is already pregnant.";
+  }
   return null;
 }
 

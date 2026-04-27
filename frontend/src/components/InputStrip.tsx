@@ -5,9 +5,9 @@ import { Household, LifeEventType, LIFE_EVENTS, US_STATES, getStateFromZip } fro
 
 interface InputStripProps {
   household: Household;
-  onHouseholdChange: (h: Household) => void;
+  onEditHousehold?: () => void;
   selectedEvent: LifeEventType | null;
-  onEventSelect: (e: LifeEventType) => void;
+  onEventSelect: (e: LifeEventType | null) => void;
   eventParams: Record<string, unknown>;
   onParamsChange: (params: Record<string, unknown>) => void;
   onRun: () => void;
@@ -15,51 +15,49 @@ interface InputStripProps {
   canRun: boolean;
 }
 
-type FieldKey = 'location' | 'year' | 'filing' | 'age' | 'income' | 'esi' | 'children' | 'event';
-
 const FILING_LABELS: Record<Household['filingStatus'], string> = {
   single: 'Single',
-  married_jointly: 'Married, joint',
-  married_separately: 'Married, separate',
-  head_of_household: 'Head of household',
+  married_jointly: 'Married',
+  married_separately: 'Married (sep.)',
+  head_of_household: 'Head of HH',
 };
 
 function isMarried(filingStatus: Household['filingStatus']): boolean {
   return filingStatus === 'married_jointly' || filingStatus === 'married_separately';
 }
 
-function getEsiLabel(household: Household): string {
-  if (!isMarried(household.filingStatus)) {
-    return household.hasESI ? 'Yes' : 'No';
-  }
-  if (household.hasESI && household.spouseHasESI) return 'Both';
-  if (household.hasESI) return 'You';
-  if (household.spouseHasESI) return 'Partner';
+function getEsiLabel(h: Household): string {
+  if (!isMarried(h.filingStatus)) return h.hasESI ? 'Yes' : 'No';
+  if (h.hasESI && h.spouseHasESI) return 'Both';
+  if (h.hasESI) return 'You';
+  if (h.spouseHasESI) return 'Partner';
   return 'Neither';
 }
 
-function getEventHighlightedChip(event: LifeEventType | null): FieldKey | null {
-  if (!event) return null;
-  const map: Record<LifeEventType, FieldKey> = {
-    having_baby: 'children',
-    moving_states: 'location',
-    getting_married: 'filing',
-    changing_income: 'income',
-    divorce: 'filing',
-    losing_esi: 'esi',
-  };
-  return map[event];
+function fmt(annual: number) {
+  return `$${Math.round(annual / 12).toLocaleString()}/mo`;
 }
+
+// Which chip corresponds to each event type
+const EVENT_CHIP: Partial<Record<LifeEventType, string>> = {
+  changing_income: 'income',
+  moving_states: 'location',
+  getting_married: 'filing',
+  divorce: 'filing',
+  losing_esi: 'esi',
+  having_baby: 'children',
+};
 
 interface ChipProps {
   label: string;
-  value: string;
+  before: string;
+  after?: string; // if set, show diff
   isOpen: boolean;
-  isHighlighted: boolean;
   onClick: () => void;
 }
 
-function Chip({ label, value, isOpen, isHighlighted, onClick }: ChipProps) {
+function Chip({ label, before, after, isOpen, onClick }: ChipProps) {
+  const hasDiff = after !== undefined && after !== before;
   return (
     <button
       type="button"
@@ -68,22 +66,23 @@ function Chip({ label, value, isOpen, isHighlighted, onClick }: ChipProps) {
         'rounded-lg border px-2.5 py-2 cursor-pointer transition-all text-left w-full',
         isOpen
           ? 'bg-[#E6FFFA] border-[#319795] ring-2 ring-[#319795]/20'
-          : isHighlighted
-          ? 'bg-[#E6FFFA] border-transparent hover:bg-[#E6FFFA]'
+          : hasDiff
+          ? 'bg-[#E6FFFA] border-[#319795]/50'
           : 'border-transparent hover:bg-gray-50',
       ].join(' ')}
     >
       <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-0.5">
         {label}
       </div>
-      <div
-        className={[
-          'text-sm font-semibold truncate',
-          isHighlighted && !isOpen ? 'text-[#285E61]' : 'text-gray-900',
-        ].join(' ')}
-      >
-        {value}
-      </div>
+      {hasDiff ? (
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-xs text-gray-400 line-through leading-tight">{before}</span>
+          <span className="text-xs text-gray-400">→</span>
+          <span className="text-sm font-semibold text-[#285E61] leading-tight">{after}</span>
+        </div>
+      ) : (
+        <div className="text-sm font-semibold text-gray-900 truncate">{before}</div>
+      )}
     </button>
   );
 }
@@ -91,50 +90,54 @@ function Chip({ label, value, isOpen, isHighlighted, onClick }: ChipProps) {
 interface PopoverProps {
   onClose: () => void;
   children: React.ReactNode;
-  onApply: () => void;
 }
 
-function Popover({ onClose, children, onApply }: PopoverProps) {
+function Popover({ onClose, children }: PopoverProps) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute top-[calc(100%+8px)] left-0 z-50 min-w-[240px] max-w-[320px]">
-        <div className="relative bg-white border border-gray-200 rounded-lg shadow-xl p-3.5">
+      <div className="absolute top-[calc(100%+8px)] left-0 z-50 min-w-[260px] max-w-[340px]">
+        <div className="relative bg-white border border-gray-200 rounded-xl shadow-xl p-4">
           <div className="absolute -top-1.5 left-4 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45" />
           {children}
-          <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onApply}
-              className="px-3 py-1.5 text-xs font-medium bg-[#319795] text-white rounded-md hover:bg-[#2C7A7B] transition-colors"
-            >
-              Apply
-            </button>
-          </div>
         </div>
       </div>
     </>
   );
 }
 
-function PopoverLabel({ children }: { children: React.ReactNode }) {
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
+    <div>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">{label}</div>
       {children}
+    </div>
+  );
+}
+
+function inputClass(extra = '') {
+  return `w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795] ${extra}`;
+}
+
+function MoneyInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#319795]/30 focus-within:border-[#319795]">
+      <span className="px-2 text-gray-400 text-sm bg-gray-50 border-r border-gray-200 py-2">$</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ''))}
+        className="flex-1 text-sm px-2 py-2 focus:outline-none"
+      />
+      <span className="px-2 text-gray-400 text-xs bg-gray-50 border-l border-gray-200 py-2">/mo</span>
     </div>
   );
 }
 
 export default function InputStrip({
   household,
-  onHouseholdChange,
+  onEditHousehold,
   selectedEvent,
   onEventSelect,
   eventParams,
@@ -143,768 +146,575 @@ export default function InputStrip({
   isLoading,
   canRun,
 }: InputStripProps) {
-  const [editField, setEditField] = useState<FieldKey | null>(null);
-
-  const highlightedChip = getEventHighlightedChip(selectedEvent);
-
-  const openField = (field: FieldKey) => setEditField(field);
-  const closeField = () => setEditField(null);
+  const [openChip, setOpenChip] = useState<string | null>(null);
 
   const married = isMarried(household.filingStatus);
 
-  const incomeDisplay = (() => {
-    const yours = `$${Math.round(household.income / 12).toLocaleString()}/mo`;
-    if (!married) return yours;
-    const spouse = `$${Math.round(household.spouseIncome / 12).toLocaleString()}/mo`;
-    return `${yours} & ${spouse}`;
+  const activeChip = selectedEvent ? EVENT_CHIP[selectedEvent] ?? null : null;
+
+  function clearEvent() {
+    onEventSelect(null);
+    onParamsChange({});
+  }
+
+  function open(chip: string) {
+    setOpenChip(openChip === chip ? null : chip);
+  }
+  function close() { setOpenChip(null); }
+
+  // Derive "after" display values from eventParams + selectedEvent
+  const locationAfter = (() => {
+    if (selectedEvent !== 'moving_states') return undefined;
+    const s = eventParams.newState as string | undefined;
+    const z = eventParams.newZipCode as string | undefined;
+    if (!s) return undefined;
+    return `${s}${z ? ' · ' + z : ''}`;
   })();
 
-  const ageDisplay = married
-    ? `${household.age} & ${household.spouseAge}`
-    : `${household.age}`;
+  const filingAfter = (() => {
+    if (selectedEvent === 'getting_married') return 'Married';
+    if (selectedEvent === 'divorce') return 'Single';
+    return undefined;
+  })();
 
-  const childDisplay = (() => {
+  const incomeAfter = (() => {
+    if (selectedEvent !== 'changing_income') return undefined;
+    const ni = eventParams.newIncome as number | undefined;
+    const ns = eventParams.newSpouseIncome as number | undefined;
+    if (ni === undefined) return undefined;
+    const base = fmt(ni);
+    if (married && ns !== undefined) return `${base} & ${fmt(ns)}`;
+    return base;
+  })();
+
+  const esiAfter = (() => {
+    if (selectedEvent !== 'losing_esi') return undefined;
+    return 'No';
+  })();
+
+  const childrenAfter = (() => {
+    if (selectedEvent !== 'having_baby') return undefined;
+    return `+1 baby`;
+  })();
+
+  const locationBefore = `${household.state}${household.zipCode ? ' · ' + household.zipCode : ''}`;
+  const filingBefore = FILING_LABELS[household.filingStatus];
+  const incomeBefore = (() => {
+    const yours = fmt(household.income);
+    if (!married) return yours;
+    return `${yours} & ${fmt(household.spouseIncome)}`;
+  })();
+  const esiBefore = getEsiLabel(household);
+  const childrenBefore = (() => {
     const n = household.childAges.length;
-    if (n === 0) return '0';
+    if (n === 0) return 'None';
     if (n === 1) return `1 (age ${household.childAges[0]})`;
     return `${n} (ages ${household.childAges.join(', ')})`;
   })();
-
-  const eventLabel =
-    selectedEvent
-      ? (LIFE_EVENTS.find((e) => e.type === selectedEvent)?.label ?? 'Pick event')
-      : 'Pick event';
-
-  const locationDisplay = `${household.state}${household.zipCode ? ' · ' + household.zipCode : ''}`;
+  const ageBefore = married ? `${household.age} & ${household.spouseAge}` : `${household.age}`;
 
   const selectedEventObj = LIFE_EVENTS.find(e => e.type === selectedEvent);
 
   return (
     <div className="relative w-full bg-white border border-gray-200 rounded-xl shadow-sm overflow-visible">
-      {/* Row 1: Household details */}
-      <div className="input-strip-grid grid grid-cols-3 gap-2 sm:gap-0 px-2 pt-1.5 pb-1">
-        {/* 1. LOCATION */}
-        <div className="relative">
-          <Chip label="Location" value={locationDisplay} isOpen={editField === 'location'} isHighlighted={highlightedChip === 'location'} onClick={() => openField('location')} />
-          {editField === 'location' && <LocationPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
+      <div className="flex items-center gap-1 px-2 pt-1.5 pb-1.5">
+        <div className="input-strip-grid grid grid-cols-4 sm:grid-cols-7 gap-1 sm:gap-0 flex-1 min-w-0">
+
+          {/* LOCATION */}
+          <div className="relative">
+            <Chip label="Location" before={locationBefore} after={locationAfter} isOpen={openChip === 'location'} onClick={() => open('location')} />
+            {openChip === 'location' && (
+              <Popover onClose={close}>
+                <LocationDiffPopover
+                  household={household}
+                  selectedEvent={selectedEvent}
+                  eventParams={eventParams}
+                  onEventSelect={onEventSelect}
+                  onParamsChange={onParamsChange}
+                  onClear={clearEvent}
+                  onClose={close}
+                />
+              </Popover>
+            )}
+          </div>
+
+          {/* FILING */}
+          <div className="relative">
+            <Chip label="Filing" before={filingBefore} after={filingAfter} isOpen={openChip === 'filing'} onClick={() => open('filing')} />
+            {openChip === 'filing' && (
+              <Popover onClose={close}>
+                <FilingDiffPopover
+                  household={household}
+                  selectedEvent={selectedEvent}
+                  eventParams={eventParams}
+                  onEventSelect={onEventSelect}
+                  onParamsChange={onParamsChange}
+                  onClear={clearEvent}
+                  onClose={close}
+                />
+              </Popover>
+            )}
+          </div>
+
+          {/* AGE (read-only, taps to edit household) */}
+          <div className="relative">
+            <Chip label="Age" before={ageBefore} isOpen={false} onClick={() => onEditHousehold?.()} />
+          </div>
+
+          {/* INCOME */}
+          <div className="relative">
+            <Chip label="Income" before={incomeBefore} after={incomeAfter} isOpen={openChip === 'income'} onClick={() => open('income')} />
+            {openChip === 'income' && (
+              <Popover onClose={close}>
+                <IncomeDiffPopover
+                  household={household}
+                  selectedEvent={selectedEvent}
+                  eventParams={eventParams}
+                  onEventSelect={onEventSelect}
+                  onParamsChange={onParamsChange}
+                  onClear={clearEvent}
+                  onClose={close}
+                />
+              </Popover>
+            )}
+          </div>
+
+          {/* ESI */}
+          <div className="relative">
+            <Chip label="ESI" before={esiBefore} after={esiAfter} isOpen={openChip === 'esi'} onClick={() => open('esi')} />
+            {openChip === 'esi' && (
+              <Popover onClose={close}>
+                <EsiDiffPopover
+                  household={household}
+                  selectedEvent={selectedEvent}
+                  eventParams={eventParams}
+                  onEventSelect={onEventSelect}
+                  onParamsChange={onParamsChange}
+                  onClear={clearEvent}
+                  onClose={close}
+                />
+              </Popover>
+            )}
+          </div>
+
+          {/* CHILDREN */}
+          <div className="relative">
+            <Chip label="Children" before={childrenBefore} after={childrenAfter} isOpen={openChip === 'children'} onClick={() => open('children')} />
+            {openChip === 'children' && (
+              <Popover onClose={close}>
+                <ChildrenDiffPopover
+                  household={household}
+                  selectedEvent={selectedEvent}
+                  eventParams={eventParams}
+                  onEventSelect={onEventSelect}
+                  onParamsChange={onParamsChange}
+                  onClear={clearEvent}
+                  onClose={close}
+                />
+              </Popover>
+            )}
+          </div>
+
+          {/* YEAR (inline edit stays — it's not an event) */}
+          <div className="relative">
+            <Chip label="Year" before={`${household.year}`} isOpen={openChip === 'year'} onClick={() => open('year')} />
+            {openChip === 'year' && (
+              <Popover onClose={close}>
+                <YearPopover household={household} onClose={close} />
+              </Popover>
+            )}
+          </div>
+
         </div>
 
-        {/* 2. YEAR */}
-        <div className="relative">
-          <Chip label="Year" value={`${household.year}`} isOpen={editField === 'year'} isHighlighted={false} onClick={() => openField('year')} />
-          {editField === 'year' && <YearPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
-        </div>
-
-        {/* 3. FILING */}
-        <div className="relative">
-          <Chip label="Filing" value={FILING_LABELS[household.filingStatus]} isOpen={editField === 'filing'} isHighlighted={highlightedChip === 'filing'} onClick={() => openField('filing')} />
-          {editField === 'filing' && <FilingPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
-        </div>
-
-        {/* 4. AGE */}
-        <div className="relative">
-          <Chip label="Age" value={ageDisplay} isOpen={editField === 'age'} isHighlighted={false} onClick={() => openField('age')} />
-          {editField === 'age' && <AgePopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
-        </div>
-
-        {/* 5. INCOME */}
-        <div className="relative">
-          <Chip label="Income" value={incomeDisplay} isOpen={editField === 'income'} isHighlighted={highlightedChip === 'income'} onClick={() => openField('income')} />
-          {editField === 'income' && <IncomePopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
-        </div>
-
-        {/* 6. ESI */}
-        <div className="relative">
-          <Chip label="ESI" value={getEsiLabel(household)} isOpen={editField === 'esi'} isHighlighted={highlightedChip === 'esi'} onClick={() => openField('esi')} />
-          {editField === 'esi' && <EsiPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
-        </div>
-
-        {/* 7. CHILDREN */}
-        <div className="relative">
-          <Chip label="Children" value={childDisplay} isOpen={editField === 'children'} isHighlighted={highlightedChip === 'children'} onClick={() => openField('children')} />
-          {editField === 'children' && <ChildrenPopover household={household} onHouseholdChange={onHouseholdChange} onClose={closeField} />}
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-gray-100 mx-2" />
-
-      {/* Row 2: Event + Run */}
-      <div className="flex items-stretch gap-2 px-2 pb-1.5 pt-1">
-        <div className="relative flex-1">
+        {/* Edit household button */}
+        {onEditHousehold && (
           <button
             type="button"
-            onClick={() => openField('event')}
-            className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
-              editField === 'event'
-                ? 'border-[#319795] bg-[#E6FFFA] ring-2 ring-[#319795]/20'
-                : selectedEvent
-                ? 'border-[#319795]/30 bg-[#F0FAFA] hover:bg-[#E6FFFA]'
-                : 'border-dashed border-gray-300 hover:border-[#319795]/50 hover:bg-gray-50'
-            }`}
+            onClick={onEditHousehold}
+            className="shrink-0 ml-1 flex flex-col items-center justify-center px-2.5 py-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 hover:text-[#319795] hover:bg-gray-50 rounded-lg transition-colors self-stretch"
+            title="Edit household setup"
           >
-            <div className="flex items-center gap-2">
-              <div>
-                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-0.5 ${selectedEvent ? 'text-[#285E61]' : 'text-gray-400'}`}>
-                  Coverage change
-                </p>
-                <p className={`text-sm font-semibold leading-tight ${selectedEvent ? 'text-[#285E61]' : 'text-gray-400 italic'}`}>
-                  {selectedEvent ? selectedEventObj?.label : 'Pick a life event…'}
-                </p>
-                {selectedEventObj && (
-                  <p className="text-xs text-gray-500 mt-0.5 leading-tight">{selectedEventObj.description}</p>
-                )}
-              </div>
-            </div>
-          </button>
-          {editField === 'event' && (
-            <EventPopover
-              household={household}
-              selectedEvent={selectedEvent}
-              onEventSelect={onEventSelect}
-              eventParams={eventParams}
-              onParamsChange={onParamsChange}
-              onClose={closeField}
-            />
-          )}
-        </div>
-
-        {/* RUN */}
-        <button
-          type="button"
-          onClick={onRun}
-          disabled={!canRun || isLoading}
-          className="bg-[#319795] text-white rounded-lg px-5 py-2.5 font-semibold text-sm hover:bg-[#2C7A7B] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shrink-0 transition-colors"
-        >
-          {isLoading ? (
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            <svg className="w-3.5 h-3.5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
-          ) : (
-            <>
-              <span>Run</span>
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-              </svg>
-            </>
-          )}
-        </button>
+            Edit
+          </button>
+        )}
       </div>
+
+      {/* Event summary + Calculate row — appears when an event is selected */}
+      {canRun && selectedEventObj && (
+        <>
+          <div className="border-t border-gray-100 mx-2" />
+          <div className="flex items-center gap-3 px-3 py-2">
+            <p className="flex-1 text-xs text-gray-500 leading-snug">
+              <span className="font-semibold text-[#285E61]">{selectedEventObj.label}:</span>{' '}
+              {selectedEventObj.description}
+            </p>
+            <button
+              type="button"
+              onClick={onRun}
+              disabled={isLoading}
+              className="bg-[#319795] text-white rounded-lg px-4 py-1.5 font-semibold text-sm hover:bg-[#2C7A7B] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0 transition-colors"
+            >
+              {isLoading ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <>
+                  Calculate
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                </>
+              )}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-interface HouseholdPopoverProps {
+// ─── Diff popovers ────────────────────────────────────────────────────────────
+
+interface DiffPopoverProps {
   household: Household;
-  onHouseholdChange: (h: Household) => void;
+  selectedEvent: LifeEventType | null;
+  eventParams: Record<string, unknown>;
+  onEventSelect: (e: LifeEventType | null) => void;
+  onParamsChange: (p: Record<string, unknown>) => void;
+  onClear: () => void;
   onClose: () => void;
 }
 
-function LocationPopover({ household, onHouseholdChange, onClose }: HouseholdPopoverProps) {
-  const [state, setState] = useState(household.state);
-  const [zip, setZip] = useState(household.zipCode ?? '');
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">{children}</div>;
+}
 
-  const apply = () => {
-    onHouseholdChange({ ...household, state, zipCode: zip || undefined });
-    onClose();
-  };
+function BeforeValue({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-sm text-gray-400 bg-gray-50 rounded-lg px-3 py-2 mb-3 border border-gray-100">
+      {children}
+    </div>
+  );
+}
+
+function ClearButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mt-3 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+    >
+      ← Clear change
+    </button>
+  );
+}
+
+// LOCATION diff popover
+function LocationDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
+  const isActive = selectedEvent === 'moving_states';
+  const [newState, setNewState] = useState((eventParams.newState as string) ?? '');
+  const [newZip, setNewZip] = useState((eventParams.newZipCode as string) ?? '');
+
+  function apply(state: string, zip: string) {
+    if (!state || state === household.state) {
+      onClear();
+      return;
+    }
+    onEventSelect('moving_states');
+    onParamsChange({ newState: state, newZipCode: zip || undefined });
+  }
 
   return (
-    <Popover onClose={onClose} onApply={apply}>
-      <PopoverLabel>Location</PopoverLabel>
-      <div className="space-y-2">
+    <div>
+      <SectionLabel>Where are you moving?</SectionLabel>
+      <BeforeValue>Now: {household.state}{household.zipCode ? ` · ${household.zipCode}` : ''}</BeforeValue>
+      <Row label="New state">
         <select
-          value={state}
-          onChange={(e) => setState(e.target.value)}
-          className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
+          value={newState}
+          onChange={(e) => { setNewState(e.target.value); apply(e.target.value, newZip); }}
+          className={inputClass('mb-2')}
         >
-          {US_STATES.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.name}
-            </option>
+          <option value="">Pick a state…</option>
+          {US_STATES.filter(s => s.code !== household.state).map(s => (
+            <option key={s.code} value={s.code}>{s.name}</option>
           ))}
         </select>
+      </Row>
+      <Row label="New ZIP (optional)">
         <input
           type="text"
           inputMode="numeric"
           maxLength={5}
-          placeholder="ZIP code (optional)"
-          value={zip}
+          value={newZip}
           onChange={(e) => {
             const v = e.target.value.replace(/\D/g, '').slice(0, 5);
-            setZip(v);
-            if (v.length === 5) {
-              const detected = getStateFromZip(v);
-              if (detected) setState(detected);
-            }
+            setNewZip(v);
+            const detected = v.length === 5 ? getStateFromZip(v) : null;
+            const s = detected ?? newState;
+            if (s) apply(s, v);
+            if (detected) setNewState(detected);
           }}
-          className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
+          className={inputClass()}
+          placeholder="Optional"
         />
-      </div>
-    </Popover>
+      </Row>
+      {isActive && <ClearButton onClick={onClear} />}
+    </div>
   );
 }
 
-function YearPopover({ household, onHouseholdChange, onClose }: HouseholdPopoverProps) {
-  const [year, setYear] = useState(household.year);
-
-  const apply = () => {
-    onHouseholdChange({ ...household, year });
-    onClose();
-  };
-
-  return (
-    <Popover onClose={onClose} onApply={apply}>
-      <PopoverLabel>Coverage year</PopoverLabel>
-      <select
-        value={year}
-        onChange={(e) => setYear(parseInt(e.target.value))}
-        className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-      >
-        <option value={2028}>2028</option>
-        <option value={2027}>2027</option>
-        <option value={2026}>2026</option>
-        <option value={2025}>2025</option>
-        <option value={2024}>2024</option>
-        <option value={2023}>2023</option>
-      </select>
-    </Popover>
-  );
-}
-
-function FilingPopover({ household, onHouseholdChange, onClose }: HouseholdPopoverProps) {
-  const [filing, setFiling] = useState(household.filingStatus);
-
-  const apply = () => {
-    onHouseholdChange({ ...household, filingStatus: filing });
-    onClose();
-  };
-
-  return (
-    <Popover onClose={onClose} onApply={apply}>
-      <PopoverLabel>Filing status</PopoverLabel>
-      <select
-        value={filing}
-        onChange={(e) => setFiling(e.target.value as Household['filingStatus'])}
-        className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-      >
-        <option value="single">Single</option>
-        <option value="married_jointly">Married, jointly</option>
-        <option value="married_separately">Married, separately</option>
-        <option value="head_of_household">Head of household</option>
-      </select>
-    </Popover>
-  );
-}
-
-function AgePopover({ household, onHouseholdChange, onClose }: HouseholdPopoverProps) {
-  const [age, setAge] = useState(String(household.age));
-  const [spouseAge, setSpouseAge] = useState(String(household.spouseAge || household.age));
+// FILING diff popover
+function FilingDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
   const married = isMarried(household.filingStatus);
+  const isGettingMarried = selectedEvent === 'getting_married';
+  const isDivorcing = selectedEvent === 'divorce';
 
-  const clamp = (v: string, min: number, max: number) => {
-    const n = parseInt(v);
-    if (isNaN(n)) return min;
-    return Math.min(max, Math.max(min, n));
-  };
+  const [spouseAge, setSpouseAge] = useState(String((eventParams.spouseAge as number) ?? ''));
+  const [spouseIncomeMo, setSpouseIncomeMo] = useState(String(Math.round(((eventParams.spouseIncome as number) ?? 0) / 12)));
+  const [spouseHasESI, setSpouseHasESI] = useState((eventParams.spouseHasESI as boolean) ?? false);
+  const [esiProvider, setEsiProvider] = useState((eventParams.esiProvider as string) ?? 'both');
+  const [childrenKeeping, setChildrenKeeping] = useState((eventParams.childrenKeeping as number) ?? household.childAges.length);
 
-  const apply = () => {
-    onHouseholdChange({
-      ...household,
-      age: clamp(age, 18, 100),
-      spouseAge: married ? clamp(spouseAge, 18, 100) : household.spouseAge,
+  function selectGetMarried() {
+    onEventSelect('getting_married');
+    onParamsChange({
+      spouseAge: parseInt(spouseAge) || 30,
+      spouseIncome: parseInt(spouseIncomeMo) * 12 || 0,
+      spouseHasESI,
     });
-    onClose();
-  };
+  }
 
-  return (
-    <Popover onClose={onClose} onApply={apply}>
-      <PopoverLabel>Age</PopoverLabel>
-      <div className="space-y-2">
-        <div>
-          <label className="text-xs text-gray-500 mb-1 block">Your age</label>
-          <input
-            type="number"
-            min={18}
-            max={100}
-            value={age}
-            onChange={(e) => setAge(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-          />
-        </div>
-        {married && (
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Partner&apos;s age</label>
-            <input
-              type="number"
-              min={18}
-              max={100}
-              value={spouseAge}
-              onChange={(e) => setSpouseAge(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-            />
-          </div>
-        )}
-      </div>
-    </Popover>
-  );
-}
-
-function IncomePopover({ household, onHouseholdChange, onClose }: HouseholdPopoverProps) {
-  const [income, setIncome] = useState(String(Math.round(household.income / 12)));
-  const [spouseIncome, setSpouseIncome] = useState(
-    String(Math.round(household.spouseIncome / 12))
-  );
-  const married = isMarried(household.filingStatus);
-
-  const parseMonthly = (v: string) => {
-    const n = parseInt(v.replace(/,/g, ''));
-    return isNaN(n) ? 0 : n;
-  };
-
-  const apply = () => {
-    onHouseholdChange({
-      ...household,
-      income: parseMonthly(income) * 12,
-      spouseIncome: married ? parseMonthly(spouseIncome) * 12 : household.spouseIncome,
+  function selectDivorce() {
+    onEventSelect('divorce');
+    onParamsChange({
+      esiProvider,
+      headLosesEsi: esiProvider === 'spouse',
+      childrenKeeping,
     });
-    onClose();
-  };
+  }
 
-  return (
-    <Popover onClose={onClose} onApply={apply}>
-      <PopoverLabel>Monthly income</PopoverLabel>
-      <div className="space-y-2">
-        <div>
-          <label className="text-xs text-gray-500 mb-1 block">Your monthly income</label>
-          <div className="flex items-center border border-gray-200 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-[#319795]/30 focus-within:border-[#319795]">
-            <span className="px-2 text-gray-400 text-sm bg-gray-50 border-r border-gray-200 py-1.5">$</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={income}
-              onChange={(e) => setIncome(e.target.value.replace(/[^0-9]/g, ''))}
-              className="flex-1 text-sm px-2 py-1.5 focus:outline-none"
-            />
-          </div>
-        </div>
-        {married && (
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Partner&apos;s monthly income</label>
-            <div className="flex items-center border border-gray-200 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-[#319795]/30 focus-within:border-[#319795]">
-              <span className="px-2 text-gray-400 text-sm bg-gray-50 border-r border-gray-200 py-1.5">$</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={spouseIncome}
-                onChange={(e) => setSpouseIncome(e.target.value.replace(/[^0-9]/g, ''))}
-                className="flex-1 text-sm px-2 py-1.5 focus:outline-none"
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    </Popover>
-  );
-}
-
-function EsiPopover({ household, onHouseholdChange, onClose }: HouseholdPopoverProps) {
-  const married = isMarried(household.filingStatus);
-
-  type EsiChoice = 'You' | 'Partner' | 'Both' | 'Neither' | 'Yes' | 'No';
-
-  const currentChoice = (): EsiChoice => {
-    if (!married) return household.hasESI ? 'Yes' : 'No';
-    if (household.hasESI && household.spouseHasESI) return 'Both';
-    if (household.hasESI) return 'You';
-    if (household.spouseHasESI) return 'Partner';
-    return 'Neither';
-  };
-
-  const [choice, setChoice] = useState<EsiChoice>(currentChoice());
-
-  const options: EsiChoice[] = married
-    ? ['You', 'Partner', 'Both', 'Neither']
-    : ['Yes', 'No'];
-
-  const apply = () => {
-    let hasESI = false;
-    let spouseHasESI = false;
-    if (choice === 'You' || choice === 'Yes') { hasESI = true; }
-    else if (choice === 'Partner') { spouseHasESI = true; }
-    else if (choice === 'Both') { hasESI = true; spouseHasESI = true; }
-    onHouseholdChange({ ...household, hasESI, spouseHasESI });
-    onClose();
-  };
-
-  return (
-    <Popover onClose={onClose} onApply={apply}>
-      <PopoverLabel>Employer-sponsored insurance</PopoverLabel>
-      <div className="space-y-1.5">
-        {options.map((opt) => (
-          <label key={opt} className="flex items-center gap-2 cursor-pointer group">
-            <input
-              type="radio"
-              name="esi"
-              value={opt}
-              checked={choice === opt}
-              onChange={() => setChoice(opt)}
-              className="accent-[#319795]"
-            />
-            <span className="text-sm text-gray-700 group-hover:text-gray-900">
-              {opt}
-            </span>
-          </label>
-        ))}
-      </div>
-    </Popover>
-  );
-}
-
-function ChildrenPopover({ household, onHouseholdChange, onClose }: HouseholdPopoverProps) {
-  const [childAges, setChildAges] = useState<number[]>([...household.childAges]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingValue, setEditingValue] = useState('');
-
-  const addChild = () => {
-    if (childAges.length < 10) {
-      setChildAges([...childAges, 5]);
-    }
-  };
-
-  const removeChild = (i: number) => {
-    setChildAges(childAges.filter((_, idx) => idx !== i));
-  };
-
-  const updateAge = (i: number, v: number) => {
-    const next = [...childAges];
-    next[i] = Math.min(17, Math.max(0, v));
-    setChildAges(next);
-  };
-
-  const apply = () => {
-    onHouseholdChange({ ...household, childAges });
-    onClose();
-  };
-
-  return (
-    <Popover onClose={onClose} onApply={apply}>
-      <PopoverLabel>Children</PopoverLabel>
-      <div className="space-y-1.5 mb-2">
-        {childAges.length === 0 && (
-          <p className="text-xs text-gray-400">No children added</p>
-        )}
-        {childAges.map((age, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 w-12">Child {i + 1}</span>
-            <input
-              type="number"
-              min={0}
-              max={17}
-              value={editingIndex === i ? editingValue : age}
-              onChange={(e) => {
-                setEditingValue(e.target.value);
-                const n = parseInt(e.target.value);
-                if (!isNaN(n)) updateAge(i, n);
-              }}
-              onFocus={() => { setEditingIndex(i); setEditingValue(String(age)); }}
-              onBlur={() => {
-                const n = parseInt(editingValue);
-                updateAge(i, isNaN(n) ? 0 : n);
-                setEditingIndex(null);
-                setEditingValue('');
-              }}
-              className="w-14 text-sm border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-            />
-            <span className="text-xs text-gray-400">yrs</span>
-            <button
-              type="button"
-              onClick={() => removeChild(i)}
-              className="ml-auto p-1 text-gray-300 hover:text-gray-500 rounded transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        ))}
-      </div>
-      {childAges.length < 10 && (
+  if (!married) {
+    return (
+      <div>
+        <SectionLabel>Change in status</SectionLabel>
+        <BeforeValue>Now: Single</BeforeValue>
         <button
           type="button"
-          onClick={addChild}
-          className="w-full py-1.5 text-xs font-medium text-[#2C7A7B] border border-dashed border-[#81E6D9] rounded-md hover:bg-[#E6FFFA] transition-colors"
+          onClick={selectGetMarried}
+          className={`w-full text-left px-3 py-2.5 rounded-lg border-2 font-medium text-sm mb-2 transition-all ${isGettingMarried ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]' : 'border-gray-200 hover:border-[#319795]/50'}`}
         >
-          + Add child
+          Getting married
         </button>
+        {isGettingMarried && (
+          <div className="space-y-3 mt-3 pt-3 border-t border-gray-100">
+            <Row label="Partner's age">
+              <input type="number" min={18} max={100} value={spouseAge} onChange={(e) => { setSpouseAge(e.target.value); }}
+                onBlur={() => selectGetMarried()}
+                className={inputClass()} placeholder="e.g. 32" />
+            </Row>
+            <Row label="Partner's monthly income">
+              <MoneyInput value={spouseIncomeMo} onChange={(v) => { setSpouseIncomeMo(v); }} />
+            </Row>
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 mt-1">
+              <input type="checkbox" checked={spouseHasESI} onChange={(e) => { setSpouseHasESI(e.target.checked); selectGetMarried(); }} className="accent-[#319795]" />
+              Partner has employer insurance
+            </label>
+            <button type="button" onClick={selectGetMarried} className="w-full py-2 text-sm font-semibold bg-[#319795] text-white rounded-lg hover:bg-[#2C7A7B] transition-colors mt-1">
+              Apply
+            </button>
+          </div>
+        )}
+        {(isGettingMarried) && <ClearButton onClick={onClear} />}
+      </div>
+    );
+  }
+
+  // married → can divorce
+  const bothHaveEsi = household.hasESI && household.spouseHasESI;
+  return (
+    <div>
+      <SectionLabel>Change in status</SectionLabel>
+      <BeforeValue>Now: {FILING_LABELS[household.filingStatus]}</BeforeValue>
+      <button
+        type="button"
+        onClick={selectDivorce}
+        className={`w-full text-left px-3 py-2.5 rounded-lg border-2 font-medium text-sm mb-2 transition-all ${isDivorcing ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]' : 'border-gray-200 hover:border-[#319795]/50'}`}
+      >
+        Divorce or separation
+      </button>
+      {isDivorcing && (
+        <div className="space-y-3 mt-3 pt-3 border-t border-gray-100">
+          {bothHaveEsi && (
+            <Row label="Whose employer provides ESI?">
+              <select value={esiProvider} onChange={(e) => { const v = e.target.value; setEsiProvider(v); onParamsChange({ esiProvider: v, headLosesEsi: v === 'spouse', childrenKeeping }); }} className={inputClass()}>
+                <option value="both">Both (separate jobs)</option>
+                <option value="yours">Yours</option>
+                <option value="spouse">Partner's</option>
+              </select>
+            </Row>
+          )}
+          {household.childAges.length > 0 && (
+            <Row label={`Children staying with you (of ${household.childAges.length})`}>
+              <input type="number" min={0} max={household.childAges.length} value={childrenKeeping}
+                onChange={(e) => { const n = parseInt(e.target.value) ?? 0; setChildrenKeeping(n); onParamsChange({ esiProvider, headLosesEsi: esiProvider === 'spouse', childrenKeeping: n }); }}
+                className={inputClass()} />
+            </Row>
+          )}
+        </div>
       )}
-    </Popover>
+      {isDivorcing && <ClearButton onClick={onClear} />}
+    </div>
   );
 }
 
-interface EventPopoverProps {
-  household: Household;
-  selectedEvent: LifeEventType | null;
-  onEventSelect: (e: LifeEventType) => void;
-  eventParams: Record<string, unknown>;
-  onParamsChange: (params: Record<string, unknown>) => void;
-  onClose: () => void;
-}
-
-function EventPopover({
-  household,
-  selectedEvent,
-  onEventSelect,
-  eventParams,
-  onParamsChange,
-  onClose,
-}: EventPopoverProps) {
-  const [draftEvent, setDraftEvent] = useState<LifeEventType | null>(selectedEvent);
-  const [draftParams, setDraftParams] = useState<Record<string, unknown>>({ ...eventParams });
-
-  const apply = () => {
-    if (draftEvent) {
-      onEventSelect(draftEvent);
-      onParamsChange(draftParams);
-    }
-    onClose();
-  };
-
-  const updateParam = (key: string, value: unknown) => {
-    setDraftParams((prev) => ({ ...prev, [key]: value }));
-  };
-
+// INCOME diff popover
+function IncomeDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
   const married = isMarried(household.filingStatus);
+  const isActive = selectedEvent === 'changing_income';
 
-  const renderParams = () => {
-    if (!draftEvent) return null;
+  const [yourMo, setYourMo] = useState(String(Math.round(((eventParams.newIncome as number) ?? household.income) / 12)));
+  const [partnerMo, setPartnerMo] = useState(String(Math.round(((eventParams.newSpouseIncome as number) ?? household.spouseIncome) / 12)));
 
-    switch (draftEvent) {
-      case 'having_baby':
-        return (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <label className="text-xs text-gray-500 mb-1 block">Babies expected</label>
-            <select
-              value={(draftParams.numBabies as number) ?? 1}
-              onChange={(e) => updateParam('numBabies', parseInt(e.target.value))}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-            >
-              <option value={1}>1</option>
-              <option value={2}>2 (twins)</option>
-              <option value={3}>3 (triplets)</option>
-            </select>
-          </div>
-        );
-
-      case 'moving_states': {
-        const newState = (draftParams.newState as string) ?? (US_STATES.find((s) => s.code !== household.state)?.code ?? 'TX');
-        const newZip = (draftParams.newZipCode as string) ?? '';
-        return (
-          <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">New state</label>
-                <select
-                  value={newState}
-                  onChange={(e) => updateParam('newState', e.target.value)}
-                  className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-                >
-                  {US_STATES.filter((s) => s.code !== household.state).map((s) => (
-                    <option key={s.code} value={s.code}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">New ZIP</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={5}
-                  value={newZip}
-                  onChange={(e) => {
-                    const v = e.target.value.replace(/\D/g, '').slice(0, 5);
-                    const detected = v.length === 5 ? getStateFromZip(v) : null;
-                    setDraftParams((prev) => ({
-                      ...prev,
-                      newZipCode: v || undefined,
-                      ...(detected ? { newState: detected } : {}),
-                    }));
-                  }}
-                  className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-                  placeholder="ZIP"
-                />
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      case 'getting_married': {
-        const spouseAge = (draftParams.spouseAge as number) ?? household.age;
-        const spouseIncomeMonthly = Math.round(((draftParams.spouseIncome as number) ?? 0) / 12);
-        const spouseHasESI = (draftParams.spouseHasESI as boolean) ?? false;
-        return (
-          <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Partner&apos;s age</label>
-              <input
-                type="number"
-                min={18}
-                max={100}
-                value={spouseAge}
-                onChange={(e) => updateParam('spouseAge', parseInt(e.target.value) || household.age)}
-                className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Partner&apos;s monthly income</label>
-              <div className="flex items-center border border-gray-200 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-[#319795]/30 focus-within:border-[#319795]">
-                <span className="px-2 text-gray-400 text-sm bg-gray-50 border-r border-gray-200 py-1.5">$</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={spouseIncomeMonthly}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0;
-                    updateParam('spouseIncome', n * 12);
-                  }}
-                  className="flex-1 text-sm px-2 py-1.5 focus:outline-none"
-                />
-              </div>
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={spouseHasESI}
-                onChange={(e) => updateParam('spouseHasESI', e.target.checked)}
-                className="accent-[#319795]"
-              />
-              <span className="text-xs text-gray-700">Partner has ESI</span>
-            </label>
-          </div>
-        );
-      }
-
-      case 'changing_income': {
-        const newIncomeMo = Math.round(((draftParams.newIncome as number) ?? household.income) / 12);
-        const newSpouseIncomeMo = Math.round(((draftParams.newSpouseIncome as number) ?? household.spouseIncome) / 12);
-        return (
-          <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">
-                Your new monthly income
-                <span className="ml-1 text-gray-400">(current: ${Math.round(household.income / 12).toLocaleString()}/mo)</span>
-              </label>
-              <div className="flex items-center border border-gray-200 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-[#319795]/30 focus-within:border-[#319795]">
-                <span className="px-2 text-gray-400 text-sm bg-gray-50 border-r border-gray-200 py-1.5">$</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={newIncomeMo}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0;
-                    updateParam('newIncome', n * 12);
-                  }}
-                  className="flex-1 text-sm px-2 py-1.5 focus:outline-none"
-                />
-              </div>
-            </div>
-            {married && (
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">
-                  Partner&apos;s new monthly income
-                  <span className="ml-1 text-gray-400">(current: ${Math.round(household.spouseIncome / 12).toLocaleString()}/mo)</span>
-                </label>
-                <div className="flex items-center border border-gray-200 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-[#319795]/30 focus-within:border-[#319795]">
-                  <span className="px-2 text-gray-400 text-sm bg-gray-50 border-r border-gray-200 py-1.5">$</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newSpouseIncomeMo}
-                    onChange={(e) => {
-                      const n = parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0;
-                      updateParam('newSpouseIncome', n * 12);
-                    }}
-                    className="flex-1 text-sm px-2 py-1.5 focus:outline-none"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      }
-
-      case 'divorce': {
-        const bothHaveEsi = household.hasESI && household.spouseHasESI;
-        const esiProvider = (draftParams.esiProvider as string) ?? 'both';
-        const childrenKeeping = (draftParams.childrenKeeping as number) ?? household.childAges.length;
-        return (
-          <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-            {bothHaveEsi && (
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Whose employer provides coverage?</label>
-                <select
-                  value={esiProvider}
-                  onChange={(e) => {
-                    const provider = e.target.value;
-                    setDraftParams((prev) => ({
-                      ...prev,
-                      esiProvider: provider,
-                      headLosesEsi: provider === 'spouse',
-                    }));
-                  }}
-                  className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-                >
-                  <option value="both">Both (separate jobs)</option>
-                  <option value="yours">Yours</option>
-                  <option value="spouse">Partner&apos;s</option>
-                </select>
-              </div>
-            )}
-            {household.childAges.length > 0 && (
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Children staying with you (of {household.childAges.length})</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={household.childAges.length}
-                  value={childrenKeeping}
-                  onChange={(e) => updateParam('childrenKeeping', parseInt(e.target.value) ?? household.childAges.length)}
-                  className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
-                />
-              </div>
-            )}
-          </div>
-        );
-      }
-
-      case 'losing_esi':
-        return null;
-
-      default:
-        return null;
+  function apply(y: string, p: string) {
+    const ni = (parseInt(y) || 0) * 12;
+    const ns = (parseInt(p) || 0) * 12;
+    if (ni === household.income && (!married || ns === household.spouseIncome)) {
+      onClear();
+      return;
     }
-  };
+    onEventSelect('changing_income');
+    onParamsChange({ newIncome: ni, ...(married ? { newSpouseIncome: ns } : {}) });
+  }
 
   return (
-    <Popover onClose={onClose} onApply={apply}>
-      <PopoverLabel>Coverage change</PopoverLabel>
+    <div>
+      <SectionLabel>What's changing?</SectionLabel>
+      <BeforeValue>
+        Now: {fmt(household.income)}{married ? ` & ${fmt(household.spouseIncome)}` : ''}
+      </BeforeValue>
+      <div className="space-y-3">
+        <Row label="Your new monthly income">
+          <MoneyInput value={yourMo} onChange={(v) => { setYourMo(v); apply(v, partnerMo); }} />
+        </Row>
+        {married && (
+          <Row label="Partner's new monthly income">
+            <MoneyInput value={partnerMo} onChange={(v) => { setPartnerMo(v); apply(yourMo, v); }} />
+          </Row>
+        )}
+      </div>
+      {isActive && <ClearButton onClick={onClear} />}
+    </div>
+  );
+}
+
+// ESI diff popover
+function EsiDiffPopover({ household, selectedEvent, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
+  const isActive = selectedEvent === 'losing_esi';
+
+  return (
+    <div>
+      <SectionLabel>Employer insurance</SectionLabel>
+      <BeforeValue>Now: {getEsiLabel(household)}</BeforeValue>
+      {household.hasESI ? (
+        <>
+          <button
+            type="button"
+            onClick={() => { onEventSelect('losing_esi'); onParamsChange({}); }}
+            className={`w-full text-left px-3 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${isActive ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]' : 'border-gray-200 hover:border-[#319795]/50'}`}
+          >
+            Losing job-based coverage
+          </button>
+          {isActive && <ClearButton onClick={onClear} />}
+        </>
+      ) : (
+        <p className="text-sm text-gray-500">No employer insurance to lose.</p>
+      )}
+    </div>
+  );
+}
+
+// CHILDREN diff popover
+function ChildrenDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
+  const married = isMarried(household.filingStatus);
+  const isActive = selectedEvent === 'having_baby';
+  const pregnantIndex = (eventParams.pregnantMemberIndex as number) ?? 0;
+
+  function selectBaby(idx: number) {
+    onEventSelect('having_baby');
+    onParamsChange({ pregnantMemberIndex: idx });
+  }
+
+  return (
+    <div>
+      <SectionLabel>Being pregnant</SectionLabel>
+      <BeforeValue>
+        Now: {household.childAges.length === 0 ? 'No children' : `${household.childAges.length} child${household.childAges.length > 1 ? 'ren' : ''}`}
+      </BeforeValue>
+      {!married ? (
+        <>
+          <button
+            type="button"
+            onClick={() => selectBaby(0)}
+            className={`w-full text-left px-3 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${isActive ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]' : 'border-gray-200 hover:border-[#319795]/50'}`}
+          >
+            I&apos;m currently pregnant
+          </button>
+        </>
+      ) : (
+        <div className="space-y-2">
+          {[
+            { label: "You're pregnant", idx: 0 },
+            { label: 'Partner is pregnant', idx: 1 },
+          ].map(opt => (
+            <button
+              key={opt.idx}
+              type="button"
+              onClick={() => selectBaby(opt.idx)}
+              className={`w-full text-left px-3 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${isActive && pregnantIndex === opt.idx ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]' : 'border-gray-200 hover:border-[#319795]/50'}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {isActive && <ClearButton onClick={onClear} />}
+    </div>
+  );
+}
+
+// YEAR inline edit (not a life event)
+function YearPopover({ household, onClose }: { household: Household; onClose: () => void }) {
+  return (
+    <div>
+      <SectionLabel>Coverage year</SectionLabel>
       <select
-        value={draftEvent ?? ''}
-        onChange={(e) => {
-          const val = e.target.value as LifeEventType;
-          setDraftEvent(val);
-          setDraftParams({});
-        }}
-        className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#319795]/30 focus:border-[#319795]"
+        value={household.year}
+        onChange={() => { /* year editing disabled — edit via wizard */ }}
+        className={inputClass()}
       >
-        <option value="" disabled>Pick event…</option>
-        {LIFE_EVENTS.map((e) => (
-          <option key={e.type} value={e.type}>{e.label}</option>
+        {[2028, 2027, 2026, 2025, 2024, 2023].map(y => (
+          <option key={y} value={y}>{y}</option>
         ))}
       </select>
-      {renderParams()}
-    </Popover>
+      <p className="text-xs text-gray-400 mt-2">To change year, use Edit above.</p>
+    </div>
+  );
+}
+
+// Re-export for preview strip in page.tsx
+function MoneyInputInline({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+      <span className="px-2 text-gray-400 text-sm bg-gray-50 border-r border-gray-200 py-2">$</span>
+      <input type="text" inputMode="numeric" value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ''))}
+        className="flex-1 text-sm px-2 py-2 focus:outline-none" />
+    </div>
   );
 }
