@@ -104,7 +104,7 @@ def create_household_from_request(data: dict) -> Household:
 def create_event_from_request(event_type: str, params: dict, household: Household):
     """Convert frontend event type to backend LifeEvent."""
     event_map = {
-        "having_baby": lambda: Pregnancy(),
+        "having_baby": lambda: Pregnancy(member_index=int(params.get("pregnantMemberIndex", 0))),
         "moving_states": lambda: Move(new_state=params.get("newState", "TX"), new_zip_code=params.get("newZipCode") or None),
         "getting_married": lambda: Marriage(
             spouse_age=params.get("spouseAge", 30),

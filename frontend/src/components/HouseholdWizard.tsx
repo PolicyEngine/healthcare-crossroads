@@ -6,6 +6,7 @@ import { Household, US_STATES, getStateFromZip } from '@/types';
 interface HouseholdWizardProps {
   onComplete: (household: Household) => void;
   onBack?: () => void;
+  onPartialChange?: (partial: Partial<Household>) => void;
 }
 
 type FilingStatus = Household['filingStatus'];
@@ -16,7 +17,7 @@ function isMarriedStatus(status: FilingStatus): boolean {
   return status === 'married_jointly' || status === 'married_separately';
 }
 
-export default function HouseholdWizard({ onComplete, onBack }: HouseholdWizardProps) {
+export default function HouseholdWizard({ onComplete, onBack, onPartialChange }: HouseholdWizardProps) {
   const [step, setStep] = useState(1);
 
   const [zip, setZip] = useState('');
@@ -60,18 +61,42 @@ export default function HouseholdWizard({ onComplete, onBack }: HouseholdWizardP
   }
 
   function goNext() {
-    setStep((s) => s + 1);
+    const next = step + 1;
+    setStep(next);
+    // Emit partial household for live preview
+    onPartialChange?.({
+      state: detectedState ?? undefined,
+      zipCode: zip || undefined,
+      filingStatus,
+      age: parseInt(age) || undefined,
+      spouseAge: parseInt(partnerAge) || parseInt(age) || undefined,
+      income: (parseFloat(monthlyIncome.replace(/,/g, '')) || 0) * 12,
+      spouseIncome: (parseFloat(partnerMonthlyIncome.replace(/,/g, '')) || 0) * 12,
+      hasESI,
+      spouseHasESI,
+      childAges: childAges.map(Number).filter((n) => !isNaN(n)),
+      year: 2026,
+    });
   }
 
   function selectFilingStatus(status: FilingStatus) {
     setFilingStatus(status);
     setStep(3);
+    onPartialChange?.({ filingStatus: status, state: detectedState ?? undefined, zipCode: zip || undefined, year: 2026 });
   }
 
   function selectESI(selfESI: boolean, partnerESI: boolean) {
     setHasESI(selfESI);
     setSpouseHasESI(partnerESI);
     setStep(6);
+    onPartialChange?.({
+      state: detectedState ?? undefined, zipCode: zip || undefined,
+      filingStatus, age: parseInt(age) || undefined,
+      spouseAge: parseInt(partnerAge) || parseInt(age) || undefined,
+      income: (parseFloat(monthlyIncome.replace(/,/g, '')) || 0) * 12,
+      spouseIncome: (parseFloat(partnerMonthlyIncome.replace(/,/g, '')) || 0) * 12,
+      hasESI: selfESI, spouseHasESI: partnerESI, year: 2026,
+    });
   }
 
   function addChild() {

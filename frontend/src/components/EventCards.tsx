@@ -245,23 +245,38 @@ function EventEditFields({
         </div>
       );
 
-    case 'having_baby':
+    case 'having_baby': {
+      const isMarried = household.filingStatus === 'married_jointly' || household.filingStatus === 'married_separately';
       return (
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <label className={LABEL_CLASS}>Babies expected</label>
-          <select
-            value={(params.numBabies as number) || 1}
-            onChange={(e) =>
-              onParamsChange({ ...params, numBabies: parseInt(e.target.value, 10) })
-            }
-            className={INPUT_CLASS}
-          >
-            <option value={1}>1 (Single)</option>
-            <option value={2}>2 (Twins)</option>
-            <option value={3}>3 (Triplets)</option>
-          </select>
+        <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+          {isMarried && (
+            <div>
+              <label className={LABEL_CLASS}>Who is pregnant?</label>
+              <select
+                value={(params.pregnantMemberIndex as number) ?? 0}
+                onChange={(e) => onParamsChange({ ...params, pregnantMemberIndex: parseInt(e.target.value, 10) })}
+                className={INPUT_CLASS}
+              >
+                <option value={0}>You</option>
+                <option value={1}>Your partner</option>
+              </select>
+            </div>
+          )}
+          <div>
+            <label className={LABEL_CLASS}>Babies expected</label>
+            <select
+              value={(params.numBabies as number) || 1}
+              onChange={(e) => onParamsChange({ ...params, numBabies: parseInt(e.target.value, 10) })}
+              className={INPUT_CLASS}
+            >
+              <option value={1}>1 (Single)</option>
+              <option value={2}>2 (Twins)</option>
+              <option value={3}>3 (Triplets)</option>
+            </select>
+          </div>
         </div>
       );
+    }
 
     case 'getting_married':
       return (

@@ -36,6 +36,7 @@ function decodeScenario(encoded: string): { household: Household; event: LifeEve
 
 export default function Home() {
   const [household, setHousehold] = useState<Household | null>(null);
+  const [partialHousehold, setPartialHousehold] = useState<Partial<Household>>({});
   const [selectedEvent, setSelectedEvent] = useState<LifeEventType | null>(null);
   const [eventParams, setEventParams] = useState<Record<string, unknown>>({});
   const [result, setResult] = useState<SimulationResult | null>(null);
@@ -189,9 +190,29 @@ export default function Home() {
           )}
         </div>
 
+        {/* Preview strip during wizard — non-interactive */}
+        {!household && Object.keys(partialHousehold).length > 0 && (
+          <div className="pointer-events-none opacity-60 mb-4">
+            <InputStrip
+              household={{ state: 'CA', filingStatus: 'single', income: 0, spouseIncome: 0, spouseAge: 30, childAges: [], age: 30, hasESI: false, spouseHasESI: false, year: 2026, ...partialHousehold } as Household}
+              onHouseholdChange={() => {}}
+              selectedEvent={null}
+              onEventSelect={() => {}}
+              eventParams={{}}
+              onParamsChange={() => {}}
+              onRun={() => {}}
+              isLoading={false}
+              canRun={false}
+            />
+          </div>
+        )}
+
         {/* Wizard (no household yet) */}
         {!household && (
-          <HouseholdWizard onComplete={handleWizardComplete} />
+          <HouseholdWizard
+            onComplete={handleWizardComplete}
+            onPartialChange={setPartialHousehold}
+          />
         )}
 
         {/* Household entered — show input strip + event cards */}
