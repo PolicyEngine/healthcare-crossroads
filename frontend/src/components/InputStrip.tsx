@@ -233,6 +233,7 @@ export default function InputStrip({
                   onParamsChange={onParamsChange}
                   onClear={clearEvent}
                   onClose={close}
+                  onRun={onRun}
                 />
               </Popover>
             )}
@@ -251,6 +252,7 @@ export default function InputStrip({
                   onParamsChange={onParamsChange}
                   onClear={clearEvent}
                   onClose={close}
+                  onRun={onRun}
                 />
               </Popover>
             )}
@@ -274,6 +276,7 @@ export default function InputStrip({
                   onParamsChange={onParamsChange}
                   onClear={clearEvent}
                   onClose={close}
+                  onRun={onRun}
                 />
               </Popover>
             )}
@@ -292,6 +295,7 @@ export default function InputStrip({
                   onParamsChange={onParamsChange}
                   onClear={clearEvent}
                   onClose={close}
+                  onRun={onRun}
                 />
               </Popover>
             )}
@@ -310,6 +314,7 @@ export default function InputStrip({
                   onParamsChange={onParamsChange}
                   onClear={clearEvent}
                   onClose={close}
+                  onRun={onRun}
                 />
               </Popover>
             )}
@@ -370,6 +375,7 @@ interface DiffPopoverProps {
   onParamsChange: (p: Record<string, unknown>) => void;
   onClear: () => void;
   onClose: () => void;
+  onRun: () => void;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -397,18 +403,22 @@ function ClearButton({ onClick }: { onClick: () => void }) {
 }
 
 // LOCATION diff popover
-function LocationDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
+function LocationDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear, onClose, onRun }: DiffPopoverProps) {
   const isActive = selectedEvent === 'moving_states';
   const [newState, setNewState] = useState((eventParams.newState as string) ?? '');
   const [newZip, setNewZip] = useState((eventParams.newZipCode as string) ?? '');
 
-  function apply(state: string, zip: string) {
-    if (!state || state === household.state) {
-      onClear();
-      return;
-    }
+  function setEvent(state: string, zip: string) {
+    if (!state || state === household.state) { onClear(); return; }
     onEventSelect('moving_states');
     onParamsChange({ newState: state, newZipCode: zip || undefined });
+  }
+
+  function applyAndRun() {
+    if (!newState || newState === household.state) return;
+    setEvent(newState, newZip);
+    onClose();
+    onRun();
   }
 
   return (
@@ -418,7 +428,7 @@ function LocationDiffPopover({ household, selectedEvent, eventParams, onEventSel
       <Row label="New state">
         <select
           value={newState}
-          onChange={(e) => { setNewState(e.target.value); apply(e.target.value, newZip); }}
+          onChange={(e) => { setNewState(e.target.value); setEvent(e.target.value, newZip); }}
           className={inputClass('mb-2')}
         >
           <option value="">Pick a state…</option>
@@ -438,20 +448,25 @@ function LocationDiffPopover({ household, selectedEvent, eventParams, onEventSel
             setNewZip(v);
             const detected = v.length === 5 ? getStateFromZip(v) : null;
             const s = detected ?? newState;
-            if (s) apply(s, v);
+            if (s) setEvent(s, v);
             if (detected) setNewState(detected);
           }}
           className={inputClass()}
           placeholder="Optional"
         />
       </Row>
+      {newState && newState !== household.state && (
+        <button type="button" onClick={applyAndRun} className="w-full py-2 text-sm font-semibold bg-[#319795] text-white rounded-lg hover:bg-[#2C7A7B] transition-colors mt-3">
+          Apply
+        </button>
+      )}
       {isActive && <ClearButton onClick={onClear} />}
     </div>
   );
 }
 
 // FILING diff popover
-function FilingDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
+function FilingDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear, onClose, onRun }: DiffPopoverProps) {
   const married = isMarried(household.filingStatus);
   const isGettingMarried = selectedEvent === 'getting_married';
   const isDivorcing = selectedEvent === 'divorce';
@@ -506,7 +521,7 @@ function FilingDiffPopover({ household, selectedEvent, eventParams, onEventSelec
               <input type="checkbox" checked={spouseHasESI} onChange={(e) => { setSpouseHasESI(e.target.checked); selectGetMarried(); }} className="accent-[#319795]" />
               Partner has employer insurance
             </label>
-            <button type="button" onClick={selectGetMarried} className="w-full py-2 text-sm font-semibold bg-[#319795] text-white rounded-lg hover:bg-[#2C7A7B] transition-colors mt-1">
+            <button type="button" onClick={() => { selectGetMarried(); onClose(); onRun(); }} className="w-full py-2 text-sm font-semibold bg-[#319795] text-white rounded-lg hover:bg-[#2C7A7B] transition-colors mt-1">
               Apply
             </button>
           </div>
@@ -547,6 +562,9 @@ function FilingDiffPopover({ household, selectedEvent, eventParams, onEventSelec
                 className={inputClass()} />
             </Row>
           )}
+          <button type="button" onClick={() => { selectDivorce(); onClose(); onRun(); }} className="w-full py-2 text-sm font-semibold bg-[#319795] text-white rounded-lg hover:bg-[#2C7A7B] transition-colors mt-1">
+            Apply
+          </button>
         </div>
       )}
       {isDivorcing && <ClearButton onClick={onClear} />}
@@ -555,14 +573,14 @@ function FilingDiffPopover({ household, selectedEvent, eventParams, onEventSelec
 }
 
 // INCOME diff popover
-function IncomeDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
+function IncomeDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear, onClose, onRun }: DiffPopoverProps) {
   const married = isMarried(household.filingStatus);
   const isActive = selectedEvent === 'changing_income';
 
   const [yourMo, setYourMo] = useState(String(Math.round(((eventParams.newIncome as number) ?? household.income) / 12)));
   const [partnerMo, setPartnerMo] = useState(String(Math.round(((eventParams.newSpouseIncome as number) ?? household.spouseIncome) / 12)));
 
-  function apply(y: string, p: string) {
+  function setEvent(y: string, p: string) {
     const ni = (parseInt(y) || 0) * 12;
     const ns = (parseInt(p) || 0) * 12;
     if (ni === household.income && (!married || ns === household.spouseIncome)) {
@@ -573,6 +591,12 @@ function IncomeDiffPopover({ household, selectedEvent, eventParams, onEventSelec
     onParamsChange({ newIncome: ni, ...(married ? { newSpouseIncome: ns } : {}) });
   }
 
+  function applyAndRun() {
+    setEvent(yourMo, partnerMo);
+    onClose();
+    onRun();
+  }
+
   return (
     <div>
       <SectionLabel>What's changing?</SectionLabel>
@@ -581,21 +605,24 @@ function IncomeDiffPopover({ household, selectedEvent, eventParams, onEventSelec
       </BeforeValue>
       <div className="space-y-3">
         <Row label="Your new monthly income">
-          <MoneyInput value={yourMo} onChange={(v) => { setYourMo(v); apply(v, partnerMo); }} />
+          <MoneyInput value={yourMo} onChange={(v) => { setYourMo(v); setEvent(v, partnerMo); }} />
         </Row>
         {married && (
           <Row label="Partner's new monthly income">
-            <MoneyInput value={partnerMo} onChange={(v) => { setPartnerMo(v); apply(yourMo, v); }} />
+            <MoneyInput value={partnerMo} onChange={(v) => { setPartnerMo(v); setEvent(yourMo, v); }} />
           </Row>
         )}
       </div>
+      <button type="button" onClick={applyAndRun} className="w-full py-2 text-sm font-semibold bg-[#319795] text-white rounded-lg hover:bg-[#2C7A7B] transition-colors mt-3">
+        Apply
+      </button>
       {isActive && <ClearButton onClick={onClear} />}
     </div>
   );
 }
 
 // ESI diff popover
-function EsiDiffPopover({ household, selectedEvent, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
+function EsiDiffPopover({ household, selectedEvent, onEventSelect, onParamsChange, onClear, onClose, onRun }: DiffPopoverProps) {
   const isActive = selectedEvent === 'losing_esi';
 
   return (
@@ -606,7 +633,7 @@ function EsiDiffPopover({ household, selectedEvent, onEventSelect, onParamsChang
         <>
           <button
             type="button"
-            onClick={() => { onEventSelect('losing_esi'); onParamsChange({}); }}
+            onClick={() => { onEventSelect('losing_esi'); onParamsChange({}); onClose(); onRun(); }}
             className={`w-full text-left px-3 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${isActive ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]' : 'border-gray-200 hover:border-[#319795]/50'}`}
           >
             Losing job-based coverage
@@ -621,7 +648,7 @@ function EsiDiffPopover({ household, selectedEvent, onEventSelect, onParamsChang
 }
 
 // CHILDREN diff popover
-function ChildrenDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear }: DiffPopoverProps) {
+function ChildrenDiffPopover({ household, selectedEvent, eventParams, onEventSelect, onParamsChange, onClear, onClose, onRun }: DiffPopoverProps) {
   const married = isMarried(household.filingStatus);
   const isActive = selectedEvent === 'having_baby';
   const pregnantIndex = (eventParams.pregnantMemberIndex as number) ?? 0;
@@ -629,6 +656,8 @@ function ChildrenDiffPopover({ household, selectedEvent, eventParams, onEventSel
   function selectBaby(idx: number) {
     onEventSelect('having_baby');
     onParamsChange({ pregnantMemberIndex: idx });
+    onClose();
+    onRun();
   }
 
   return (
@@ -638,15 +667,13 @@ function ChildrenDiffPopover({ household, selectedEvent, eventParams, onEventSel
         Now: {household.childAges.length === 0 ? 'No children' : `${household.childAges.length} child${household.childAges.length > 1 ? 'ren' : ''}`}
       </BeforeValue>
       {!married ? (
-        <>
-          <button
-            type="button"
-            onClick={() => selectBaby(0)}
-            className={`w-full text-left px-3 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${isActive ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]' : 'border-gray-200 hover:border-[#319795]/50'}`}
-          >
-            I&apos;m currently pregnant
-          </button>
-        </>
+        <button
+          type="button"
+          onClick={() => selectBaby(0)}
+          className={`w-full text-left px-3 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${isActive ? 'border-[#319795] bg-[#E6FFFA] text-[#285E61]' : 'border-gray-200 hover:border-[#319795]/50'}`}
+        >
+          I&apos;m currently pregnant
+        </button>
       ) : (
         <div className="space-y-2">
           {[
