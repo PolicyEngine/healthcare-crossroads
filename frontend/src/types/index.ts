@@ -73,14 +73,6 @@ export interface Household {
   pregnantMember?: 'head' | 'spouse' | null;
 }
 
-export type EventIconName =
-  | 'baby'
-  | 'marriage'
-  | 'divorce'
-  | 'move'
-  | 'income'
-  | 'esi_loss';
-
 export type LifeEventType =
   | 'having_baby'
   | 'moving_states'
@@ -93,7 +85,6 @@ export interface LifeEvent {
   type: LifeEventType;
   label: string;
   description: string;
-  icon: EventIconName;
   params?: Record<string, unknown>;
 }
 
@@ -153,37 +144,31 @@ export const LIFE_EVENTS: LifeEvent[] = [
     type: 'having_baby',
     label: 'Being Pregnant',
     description: 'See how pregnancy affects your Medicaid eligibility and coverage right now',
-    icon: 'baby',
   },
   {
     type: 'getting_married',
     label: 'Getting Married',
     description: 'Combine households and compare the new coverage picture',
-    icon: 'marriage',
   },
   {
     type: 'divorce',
     label: 'Divorce or Separation',
     description: 'Model how separating households changes coverage options',
-    icon: 'divorce',
   },
   {
     type: 'moving_states',
     label: 'Moving States',
     description: 'Compare healthcare support before and after relocating',
-    icon: 'move',
   },
   {
     type: 'changing_income',
     label: 'Changing Income',
     description: 'Test how income changes affect Medicaid and ACA subsidy eligibility',
-    icon: 'income',
   },
   {
     type: 'losing_esi',
     label: 'Losing Job-Based Coverage',
     description: 'See what happens when employer-sponsored insurance goes away',
-    icon: 'esi_loss',
   },
 ];
 

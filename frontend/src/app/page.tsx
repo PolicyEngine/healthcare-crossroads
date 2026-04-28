@@ -169,14 +169,10 @@ export default function Home() {
                     Your household
                   </div>
                   <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
-                    Click any detail to model a change.
+                    What if something changed?
                   </h1>
                   <p className="text-[15px] text-gray-500 leading-relaxed">
-                    {household.state}{household.zipCode ? ` · ${household.zipCode}` : ''} ·{' '}
-                    {household.filingStatus === 'married_jointly' || household.filingStatus === 'married_separately'
-                      ? `Married · age ${household.age} & ${household.spouseAge}`
-                      : `Single · age ${household.age}`} ·{' '}
-                    ${Math.round(household.income / 12).toLocaleString()}/mo
+                    Tap any field below — <b className="text-gray-700">income</b>, <b className="text-gray-700">filing status</b>, <b className="text-gray-700">location</b>, <b className="text-gray-700">job coverage</b>, or <b className="text-gray-700">children</b> — to see how it changes your healthcare picture.
                   </p>
                 </div>
                 <button

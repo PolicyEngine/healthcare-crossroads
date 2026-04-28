@@ -63,15 +63,26 @@ function Chip({ label, before, after, isOpen, onClick }: ChipProps) {
       type="button"
       onClick={onClick}
       className={[
-        'rounded-lg border px-2.5 py-2 cursor-pointer transition-all text-left w-full',
+        'group relative rounded-lg border px-2.5 py-2 cursor-pointer transition-all text-left w-full',
         isOpen
-          ? 'bg-[#E6FFFA] border-[#319795] ring-2 ring-[#319795]/20'
+          ? 'bg-[#E6FFFA] border-[#319795] border-solid ring-2 ring-[#319795]/20'
           : hasDiff
-          ? 'bg-[#E6FFFA] border-[#319795]/50'
-          : 'border-transparent hover:bg-gray-50',
+          ? 'bg-[#E6FFFA] border-[#319795] border-solid'
+          : 'border-dashed border-[#319795]/40 hover:border-solid hover:border-[#319795] hover:bg-[#E6FFFA]/50',
       ].join(' ')}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-0.5">
+      {/* Pencil icon — visible on hover/active */}
+      <svg
+        className={`absolute top-1.5 right-1.5 w-3 h-3 transition-opacity ${
+          isOpen || hasDiff ? 'opacity-70 text-[#319795]' : 'opacity-30 text-[#319795] group-hover:opacity-90'
+        }`}
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+      </svg>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-0.5 pr-4">
         {label}
       </div>
       {hasDiff ? (
@@ -211,14 +222,12 @@ export default function InputStrip({
     if (n === 1) return `1 (age ${household.childAges[0]})`;
     return `${n} (ages ${household.childAges.join(', ')})`;
   })();
-  const ageBefore = married ? `${household.age} & ${household.spouseAge}` : `${household.age}`;
-
   const selectedEventObj = LIFE_EVENTS.find(e => e.type === selectedEvent);
 
   return (
     <div className="relative w-full bg-white border border-gray-200 rounded-xl shadow-sm overflow-visible">
       <div className="flex items-center gap-1 px-2 pt-1.5 pb-1.5">
-        <div className="input-strip-grid grid grid-cols-4 sm:grid-cols-7 gap-1 sm:gap-0 flex-1 min-w-0">
+        <div className="input-strip-grid grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-1.5 flex-1 min-w-0">
 
           {/* LOCATION */}
           <div className="relative">
@@ -256,11 +265,6 @@ export default function InputStrip({
                 />
               </Popover>
             )}
-          </div>
-
-          {/* AGE — display only, not a life-event input */}
-          <div className="relative">
-            <Chip label="Age" before={ageBefore} isOpen={false} onClick={() => {}} />
           </div>
 
           {/* INCOME */}
@@ -318,11 +322,6 @@ export default function InputStrip({
                 />
               </Popover>
             )}
-          </div>
-
-          {/* YEAR — display only */}
-          <div className="relative">
-            <Chip label="Year" before={`${household.year}`} isOpen={false} onClick={() => {}} />
           </div>
 
         </div>
@@ -696,33 +695,3 @@ function ChildrenDiffPopover({ household, selectedEvent, eventParams, onEventSel
   );
 }
 
-// YEAR inline edit (not a life event)
-function YearPopover({ household, onClose }: { household: Household; onClose: () => void }) {
-  return (
-    <div>
-      <SectionLabel>Coverage year</SectionLabel>
-      <select
-        value={household.year}
-        onChange={() => { /* year editing disabled — edit via wizard */ }}
-        className={inputClass()}
-      >
-        {[2028, 2027, 2026, 2025, 2024, 2023].map(y => (
-          <option key={y} value={y}>{y}</option>
-        ))}
-      </select>
-      <p className="text-xs text-gray-400 mt-2">To change year, use Edit above.</p>
-    </div>
-  );
-}
-
-// Re-export for preview strip in page.tsx
-function MoneyInputInline({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-      <span className="px-2 text-gray-400 text-sm bg-gray-50 border-r border-gray-200 py-2">$</span>
-      <input type="text" inputMode="numeric" value={value}
-        onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ''))}
-        className="flex-1 text-sm px-2 py-2 focus:outline-none" />
-    </div>
-  );
-}
