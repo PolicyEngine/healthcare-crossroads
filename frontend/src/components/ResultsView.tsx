@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { BenefitMetric, LifeEventType, SimulationResult } from '@/types';
+
+type Tier = 'bronze' | 'silver';
 
 interface ResultsViewProps {
   result: SimulationResult;
@@ -120,13 +123,14 @@ function PersonRow({
     <tr className="border-t border-gray-100">
       <td className="px-5 py-3 text-sm font-medium text-gray-900 align-middle w-44">{label}</td>
       <td className="px-5 py-3 align-middle">
-        <div className="flex items-center gap-2 flex-wrap">
-          <CoveragePill type={beforeCoverage} exists={existsBefore} />
+        <CoveragePill type={beforeCoverage} exists={existsBefore} />
+      </td>
+      <td className="px-5 py-3 align-middle">
+        <div className="flex items-center gap-2">
           <span className="text-gray-300 text-sm">→</span>
           <CoveragePill type={afterCoverage} exists={existsAfter} />
         </div>
       </td>
-      <td />
     </tr>
   );
 }
@@ -152,7 +156,7 @@ function MetricRow({
         {monthlyBefore === 0 ? <span className="text-gray-300">—</span> : `${formatCurrency(monthlyBefore)}/mo`}
       </td>
       <td className="px-5 py-3 align-middle">
-        <div className="flex items-center gap-2 justify-between flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm tabular-nums text-gray-700">
             {monthlyAfter === 0 ? <span className="text-gray-300">—</span> : `${formatCurrency(monthlyAfter)}/mo`}
           </span>
@@ -168,18 +172,34 @@ function PlanCard({
   gross,
   ptc,
   net,
+  selected,
+  onClick,
 }: {
   tier: 'Bronze' | 'Silver';
   gross: number;
   ptc: number;
   net: number;
+  selected: boolean;
+  onClick: () => void;
 }) {
   const dotColor = tier === 'Bronze' ? 'bg-[#B45309]' : 'bg-[#64748B]';
   return (
-    <div className="border border-gray-200 rounded-xl p-4 bg-white">
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`text-left rounded-xl p-4 bg-white border-2 transition-all cursor-pointer ${
+        selected
+          ? 'border-[#319795] ring-2 ring-[#319795]/20'
+          : 'border-gray-200 hover:border-[#319795]/50'
+      }`}
+    >
       <div className="flex items-center gap-2 mb-3">
         <span className={`w-2.5 h-2.5 rounded-sm ${dotColor}`} />
         <span className="text-sm font-semibold text-gray-900">{tier}</span>
+        {selected && (
+          <span className="ml-auto text-[10px] font-semibold uppercase tracking-widest text-[#285E61]">Selected</span>
+        )}
       </div>
       <div className="text-2xl font-bold text-gray-900 tabular-nums mb-0.5">
         {formatCurrency(net / 12)} <span className="text-xs font-medium text-gray-500">/mo your cost</span>
@@ -194,7 +214,7 @@ function PlanCard({
           <span className="tabular-nums text-[#285E61]">−{formatCurrency(ptc / 12)}/mo</span>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -214,12 +234,30 @@ export default function ResultsView({ result, eventType, onReset }: ResultsViewP
     );
   }
 
+  const [selectedTier, setSelectedTier] = useState<Tier>('silver');
+
   const metrics = result.before.metrics || [];
 
-  // Hero metric: monthly net premium cost (after applying tax credits).
+  // ACA plan options.
+  const acaBefore = result.acaPremiums?.before;
+  const acaAfter = result.acaPremiums?.after;
+  const acaScope = acaAfter && (acaAfter.silverGross ?? 0) > 0 ? acaAfter : acaBefore;
+  const showAcaPlans = !!acaScope && (acaScope.silverGross ?? 0) > 0;
+
+  // Tier-aware net premium (annual). Falls back to backend's marketplace_net_premium
+  // when no ACA data is available (e.g. Medicaid-only households).
+  const tierNetPremium = (side: 'before' | 'after'): number => {
+    const aca = side === 'before' ? acaBefore : acaAfter;
+    if (!aca) return 0;
+    return selectedTier === 'bronze' ? aca.bronzeNet : aca.silverNet;
+  };
+
+  // Hero metric: monthly net premium cost for the selected tier (after applying tax credits).
   const netPremiumMetric = metrics.find((m) => m.name === 'marketplace_net_premium');
-  const netBefore = (netPremiumMetric?.before ?? 0) / 12;
-  const netAfter = (netPremiumMetric?.after ?? 0) / 12;
+  const tierNetBefore = showAcaPlans ? tierNetPremium('before') : (netPremiumMetric?.before ?? 0);
+  const tierNetAfter = showAcaPlans ? tierNetPremium('after') : (netPremiumMetric?.after ?? 0);
+  const netBefore = tierNetBefore / 12;
+  const netAfter = tierNetAfter / 12;
   const monthlyDelta = netAfter - netBefore;
   const hasHero = Math.abs(netBefore) > 0.5 || Math.abs(netAfter) > 0.5;
   const isCost = monthlyDelta > 0.5;
@@ -236,16 +274,17 @@ export default function ResultsView({ result, eventType, onReset }: ResultsViewP
     ? Array.from(beforeLabels)
     : Array.from(new Set([...beforeLabels, ...afterLabels]));
 
-  // Financial rows.
+  // Financial rows. Marketplace premium row uses the selected tier's net cost.
+  const tierLabel = selectedTier === 'bronze' ? 'Bronze plan (your cost)' : 'Silver plan (your cost)';
   const financialMetrics = metrics
     .filter((m) => FINANCIAL_METRIC_NAMES.has(m.name))
+    .map((m): BenefitMetric => {
+      if (m.name === 'marketplace_net_premium' && showAcaPlans) {
+        return { ...m, label: tierLabel, before: tierNetBefore, after: tierNetAfter };
+      }
+      return m;
+    })
     .filter((m) => m.before !== 0 || m.after !== 0);
-
-  // ACA plan options.
-  const acaBefore = result.acaPremiums?.before;
-  const acaAfter = result.acaPremiums?.after;
-  const acaScope = acaAfter && (acaAfter.silverGross ?? 0) > 0 ? acaAfter : acaBefore;
-  const showAcaPlans = !!acaScope && (acaScope.silverGross ?? 0) > 0;
 
   return (
     <div className="space-y-4">
@@ -274,12 +313,17 @@ export default function ResultsView({ result, eventType, onReset }: ResultsViewP
       {/* Unified statement table */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <table className="w-full border-collapse">
+          <colgroup>
+            <col className="w-[28%]" />
+            <col className="w-[36%]" />
+            <col className="w-[36%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/40">
-              <th className="px-5 py-3 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-44">
+              <th className="px-5 py-3 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
                 Coverage
               </th>
-              <th className="px-5 py-3 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest w-1/3">
+              <th className="px-5 py-3 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
                 Before
               </th>
               <th className="px-5 py-3 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
@@ -326,8 +370,22 @@ export default function ResultsView({ result, eventType, onReset }: ResultsViewP
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <PlanCard tier="Bronze" gross={acaScope.bronzeGross} ptc={acaScope.ptc} net={acaScope.bronzeNet} />
-            <PlanCard tier="Silver" gross={acaScope.silverGross} ptc={acaScope.ptc} net={acaScope.silverNet} />
+            <PlanCard
+              tier="Bronze"
+              gross={acaScope.bronzeGross}
+              ptc={acaScope.ptc}
+              net={acaScope.bronzeNet}
+              selected={selectedTier === 'bronze'}
+              onClick={() => setSelectedTier('bronze')}
+            />
+            <PlanCard
+              tier="Silver"
+              gross={acaScope.silverGross}
+              ptc={acaScope.ptc}
+              net={acaScope.silverNet}
+              selected={selectedTier === 'silver'}
+              onClick={() => setSelectedTier('silver')}
+            />
           </div>
           <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
             Bronze costs less per month but has higher deductibles. Silver covers more of your care costs and is the basis
