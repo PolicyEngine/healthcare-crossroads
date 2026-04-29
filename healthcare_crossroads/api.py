@@ -108,6 +108,23 @@ def create_household_from_request(data: dict) -> Household:
     )
 
 
+def _divorce_children_leaving(params: dict, household: Household) -> list[int] | None:
+    """Map the frontend's `childrenKeeping` to the indices of children who leave with the spouse.
+
+    Children appear in `household.members` after the head and spouse. If the user keeps
+    the first K children, the remaining ones (in original order) leave with the ex-spouse.
+    """
+    if "childrenKeeping" not in params:
+        return None
+    children_indices = [
+        i for i, m in enumerate(household.members)
+        if not m.is_tax_unit_head and not m.is_tax_unit_spouse
+    ]
+    keeping = max(0, min(int(params["childrenKeeping"]), len(children_indices)))
+    leaving = children_indices[keeping:]
+    return leaving or None
+
+
 def create_event_from_request(event_type: str, params: dict, household: Household):
     """Convert frontend event type to backend LifeEvent."""
     event_map = {
@@ -125,7 +142,10 @@ def create_event_from_request(event_type: str, params: dict, household: Househol
             new_spouse_income=params.get("newSpouseIncome"),
         ),
         "retiring": lambda: Retirement(),
-        "divorce": lambda: Divorce(head_loses_esi=params.get("headLosesEsi", False)),
+        "divorce": lambda: Divorce(
+            head_loses_esi=params.get("headLosesEsi", False),
+            children_leave_with_spouse=_divorce_children_leaving(params, household),
+        ),
         "pregnancy": lambda: Pregnancy(),
         "unemployment": lambda: Unemployment(
             unemployment_compensation=params.get("unemploymentBenefits", 15000)
