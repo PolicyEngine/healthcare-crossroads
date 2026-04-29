@@ -126,10 +126,7 @@ function PersonRow({
         <CoveragePill type={beforeCoverage} exists={existsBefore} />
       </td>
       <td className="px-5 py-3 align-middle">
-        <div className="flex items-center gap-2">
-          <span className="text-gray-300 text-sm">→</span>
-          <CoveragePill type={afterCoverage} exists={existsAfter} />
-        </div>
+        <CoveragePill type={afterCoverage} exists={existsAfter} />
       </td>
     </tr>
   );
@@ -388,8 +385,9 @@ export default function ResultsView({ result, eventType, onReset }: ResultsViewP
             />
           </div>
           <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
-            Bronze costs less per month but has higher deductibles. Silver covers more of your care costs and is the basis
-            for cost-sharing reductions if you qualify.
+            Silver is the ACA&apos;s benchmark plan: your tax credit is set to keep its monthly cost at a fixed share of
+            your income, so silver&apos;s &ldquo;your cost&rdquo; doesn&apos;t change when only your state or area changes.
+            Bronze costs less per month but has higher deductibles, and its cost floats with local premiums.
           </p>
         </div>
       )}
